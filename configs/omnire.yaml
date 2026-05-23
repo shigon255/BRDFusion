@@ -1,0 +1,492 @@
+seed: 0
+dataset: waymo/3cams
+
+# ------------- Trainer ------------ #
+trainer:
+  type: models.trainers.MultiTrainer
+  optim:
+    num_iters: 30000
+    use_grad_scaler: false
+    cache_buffer_freq: -1 # if > 0, use error based image sampler for training
+  render:
+    near_plane: 0.1 # near plane for rendering
+    far_plane: 10000000000.0 # far plane for rendering
+    antialiased: false # whether to use antialiasing for gaussian rendering, supported by gsplat kernel
+    packed: false # whether to use packed rendering, supported by gsplat kernel
+    absgrad: true # whether to use absolute gradient for rendering, supported by gsplat kernel
+    sparse_grad: false # whether to use sparse gradient for rendering, supported by gsplat kernel
+    batch_size: 1 # batch size for rendering, currently only support 1
+    gamma_correction: true # whether to use gamma correction for rendering
+    gamma: 2.2 # gamma value for gamma correction
+    gamma_activation_name: relu # activation name for gamma correction
+    freeze_geometry: false # whether to freeze geometry during training
+    freeze_material: false # whether to freeze material during training
+    freeze_envmap: false # whether to freeze environment map during training
+    use_affine: false # whether to use affine transformation for rendering
+    rou_met_srgb: false # whether to do gamma correction for roughness and metallic
+  tracer: # 3dgrt tracer 
+    use_pbr: false # whether to use pbr rendering
+    direct_light_mode: envmap # envmap (default/original) or point_lights
+    point_lights: [] # list of lights: [{position:[x,y,z], intensity:[r,g,b], direction:[dx,dy,dz], inner_angle_deg:a, outer_angle_deg:b}, ...]
+    point_lights_file: null # optional text file path for bulk light import (e.g., blender_area_txt)
+    point_lights_file_format: blender_area_txt # currently supports blender_area_txt
+    point_lights_file_energy_scale: 1.0 # scales file energy to renderer intensity
+    point_lights_file_spread_angle_deg: 180.0 # spotlight coverage angle from file lights (full cone angle in degrees)
+    point_lights_file_inner_ratio: 1.0 # inner_angle = inner_ratio * outer_angle for smooth edge control
+    point_lights_file_direction_axis: z # local light axis to rotate by file quaternion: x/y/z
+    point_lights_file_direction_sign: 1.0 # multiply local axis by this sign before rotation
+    point_lights_use_envmap: true # whether point_lights mode also renders envmap direct lighting
+    point_light_intensity_mode: radiant_intensity # radiant_intensity (I/r^2) or irradiance_like
+    point_light_falloff_exponent: 2.0 # exponent n in I / r^n when intensity_mode=radiant_intensity
+    render_point_light_emitters: false # eval-only: render tiny visible emitters at point-light positions
+    emit_for_eval_headlight: false # eval-only: whether camera-relative headlights should render visible emitters
+    eval_headlight_as_spotlight: false # eval-only: if true, camera headlights use spotlight attenuation instead of omni point light
+    eval_headlight_spot_direction_cam: [0.0, 0.0, 1.0] # spotlight direction in camera coordinates (OpenCV convention)
+    eval_headlight_inner_angle_deg: 10.0 # spotlight full-intensity cone angle for eval headlights
+    eval_headlight_outer_angle_deg: 20.0 # spotlight zero-intensity cone angle for eval headlights
+    point_light_emitter_radius: 0.3 # world-space radius of emitter gaussians
+    point_light_emitter_opacity: 0.98 # opacity for emitter gaussians
+    point_light_emitter_color_scale: 1.0 # scale on normalized emitter RGB
+    point_light_emitter_radius_clip: 0.0 # dedicated radius_clip for emitter render pass (0 disables culling)
+    max_num_rays: 19 # 2^19, max number of rays for training
+    max_num_rays_vis_refine: 17 # 2^17, max number of rays for visibility refinement
+    train_num_sample_rays: 512
+    eval_num_sample_rays: 256
+    train_sample_type: envmap 
+    eval_sample_type: envmap
+    use_metallic: true
+    use_raytraced_depth: false
+    trace_subpixel: false
+    subpixel_use_rasterized_depth: false
+    subpixel_use_rasterized_feature: false
+    skip_delta: 0.6 # skip delta length for ray tracing
+    use_ind_light: false # whether to use indirect light 
+    only_diffuse: false # whether to only use diffuse light for pbr rendering
+    use_vndf: true # whether to use VNDf for rendering
+    vis_refine_metallic_thres: 0.3 # threshold of metallic when filtering out high metallic 
+    use_ray_error_cache: false # whether to enable ray-level PBR error cache for pixel selection
+    ray_error_bootstrap_full_render: false # one-time full render at start to initialize ray error maps
+    ray_error_bootstrap_save: false # save tiled bootstrap ray error map image
+    ray_error_ema_decay: 0.9 # EMA decay for per-pixel error map update
+    ray_error_uniform_ratio: 0.1 # keep a fraction of uniform sampling for exploration
+    ray_error_weight_min: 1.0e-6 # minimum sampling weight / cache floor
+    ray_error_weight_power: 1.0 # optional power transform on error weights
+    render:
+      method: 3dgrt # 3dgrt or 3dgut
+      pipeline_type: reference
+      backward_pipeline_type: ${trainer.tracer.render.pipeline_type}Bwd
+      particle_kernel_degree: 4
+      particle_kernel_density_clamping: true
+      particle_kernel_min_response: 0.0113
+      particle_kernel_min_alpha: ${div:1.0,255.0}
+      particle_kernel_max_alpha: 0.99
+      particle_radiance_sph_degree: 3
+      primitive_type: instances
+      min_transmittance: 0.001
+      max_consecutive_bvh_update: 15
+      enable_normals: false
+      enable_hitcounts: true
+      enable_kernel_timings: false
+  losses:
+    rgb:
+      w: 0.8
+    ssim:
+      w: 0.2
+    mask:
+      w: 0.05 # too large will cause NaN if using self dataset
+      opacity_loss_type: bce # choose from [bce, safe_bce]
+      w_final: 1.0
+      schedule_end_step: 15000
+    depth:
+      start_step: 0
+      w: 0.01 # weight of depth loss
+      inverse_depth: false # whether to use inverse depth, NOTE that when set to True, must normalize=True
+      normalize: false # whether to normalize depth loss
+      loss_type: l1 # choose from ["l1", "l2"]
+    mono_depth:
+      w: 0.05 # weight of monocular depth loss
+      start_step: 10000
+    depth_tv:
+      w: 0.01 # weight of depth total variation loss
+    affine:
+      w: 0.00001 # weight of affine regularization
+    normal:
+      w: 0.3 # weight of normal loss
+    normal_cos:
+      w: 0.3 # weight of normal cosine loss
+    normal_tv:
+      w: 0.00 # weight of normal total variation loss
+    normal_minscale:
+      w: 0.1 # weight of normal minscale loss
+    normal_minscale_cos:
+      w: 0.1 # weight of normal minscale cosine loss
+    albedo:
+      w: 0.5 # weight of albedo loss
+    albedo_tv: 
+      w: 0.0 # weight of albedo TV loss
+    roughness:
+      w: 0.3 # weight of roughness loss
+    roughness_tv:
+      w: 0.0 # weight of roughness TV loss
+    metallic:
+      w: 0.3 # weight of metallic loss
+    metallic_tv:
+      w: 0.0 # weight of metallic TV loss
+    pbr_rgb:
+      w: 0.1 # weight of pbr rgb loss
+    pbr_transport:
+      w: 0.0 # weight of pbr transport loss
+      in_luminance: false # whether to compute transport loss in luminance space
+    visibility_refine:
+      w: 0.0 # weight of visibility loss
+      start_step: null
+    env_tv:
+      w: 0.01 # weight of environment map total variation loss
+      end_step: 30000
+    env_cauchy:
+      w: 0.0 # weight of environment map cauchy loss
+      end_step: null
+    env_scaleinv:
+      w: 0.1 # weight of environment map scale invariant loss
+      start_step: 30000
+      end_step: null
+      decay_start_step: null
+      decay_end_step: null
+      w_final: null
+      # lamdba_param: 1.5 # hdr value larger than avg + std * lambda will not be regularized. The larger the more smaller the strong light region is.
+      # k: 10 # how steep is the regularization curve
+    env_color:
+      w: 0.0
+      start_step: 30000
+    env_sparse:
+      w: 0.0 # weight of environment map sparsity loss
+      start_step: 30000
+    env_white:
+      w: 0.0 # weight of environment map white loss
+      start_step: 30000
+    env_sg_reg:
+      w: 0.0 # weight of environment map spherical gaussians regularization loss
+    env_sh_reg:
+      w: 0.0 # weight of environment map spherical harmonics regularization loss
+    diffuse_light_white:
+      w: 0.0 # weight of diffuse light white loss
+    distortion:
+      w: 0.0 # weight of distortion loss, only used in gof rendering
+      start_step: 10000 # start step for distortion loss
+    depth_normal:
+      w: 0.001 # weight of depth normal consistency loss (in 2DGS)
+      start_step: 10000 # start step for depth normal consistency loss
+    multiview_depth:
+      w: 0.0 # weight of multiview depth consistency loss
+      start_step: 10000 # start step for multiview depth consistency loss
+      patch_size: 3
+      sample_num: 102400
+      pixel_noise_th: 1.0
+    # road_normal:
+    #   w: 0.0 # weight of road normal consistency loss
+    # rigid_mono_depth:
+    #   start_step: 10000
+    #   w: 0.0 # weight of rigid nodes monocular depth loss
+  res_schedule:
+    double_steps: 250 # training starts at 1/d resolution, every n steps this is doubled
+    downscale_times: 2 # at the beginning, resolution is 1/2^d, where d is this number
+  # TBD: lr -> lr_final schedule from 0 to num_iters. For multi-stages, scheduling will repeat in each stage.
+  gaussian_optim_general_cfg:
+    xyz:
+      lr: 1.6e-04
+      lr_final: 1.6e-06
+      scale_factor: scene_radius # str or float, if "scene_scale", scale the learning rate by the scene scale
+    sh_dc:
+      lr: 0.0025
+      lr_final: 0.0025
+    sh_rest:
+      lr: 0.000125
+      lr_final: 0.000125
+    opacity:
+      lr: 0.05
+      lr_final: 0.05
+    scaling:
+      lr: 0.005
+      lr_final: 0.005
+    rotation:
+      lr: 0.001
+      lr_final: 0.001
+    normal:
+      lr: 0.001
+      lr_final: 0.001
+    albedo:
+      lr: 0.001
+    roughness:
+      lr: 0.001
+    metallic:
+      lr: 0.001
+  gaussian_ctrl_general_cfg:
+    gaussian_2d: false          # use 2d gaussians
+    warmup_steps: 500             # warmup steps for alpha
+    reset_alpha_interval: 3000    # reset alpha every n steps
+    stop_reset_alpha_at: 1000000      # stop resetting alpha after this step
+    refine_interval: 100          # refine gaussians every n steps
+    sh_degree_interval: 1000      # every n intervals turn on another sh degree
+    n_split_samples: 2            # number of samples to split gaussians into
+    # may differ in different models
+    reset_alpha_value: 0.01       # reset alpha to this value
+    densify_grad_thresh: 0.0005   # above this grad, gaussians are densified
+    densify_size_thresh: 0.003    # below this size, gaussians are *duplicated*, otherwise split
+    cull_alpha_thresh: 0.005      # threshold of opacity for culling gaussians
+    cull_scale_thresh: 0.5        # threshold of scale for culling gaussians
+    cull_screen_size: 0.15        # if a gaussian is more than this percent of screen space, cull it
+    split_screen_size: 0.05       # if a gaussian is more than this percent of screen space, split it
+    stop_screen_size_at: 4000     # stop culling/splitting at this step WRT screen size of gaussians
+    stop_split_at: 15000          # stop splitting at this step
+    sh_degree: 3                  # sh degree for gaussians
+
+# ------------- Model ------------ #
+model:
+  Background:
+    type: models.gaussians.VanillaGaussians
+    init:
+      from_lidar:
+        num_samples: 800_000
+        return_color: True
+      near_randoms: 100_000
+      far_randoms: 100_000
+    reg:
+      normal_align_reg: # L1 loss for per-gaussian normal and shortest axis alignment
+        w: 0.01
+      normal_align_cos_reg: # cosine similarity loss for per-gaussian normal and shortest axis alignment
+        w: 0.01
+      sharp_shape_reg:
+        w: 1.
+        step_interval: 10
+        max_gauss_ratio: 10.       # threshold of ratio of gaussian max to min scale before applying regularization loss from the PhysGaussian paper
+      sum_opacity_reg: # regularization to encourage the sum of opacities to be small to eliminate floaters
+        w: 0.0
+      maxscale_reg: # regularization to encourage the max scale to be small
+        w: 0.0
+        max_allowed_scale: 0.2 # corresponding to 4.0m, from DeSiRe-GS
+      flatten: # regularization to encourage the scale along the shortest axis to be small
+        w: 0.05
+      sparse_reg: # regularization to encourage sparsity in opacity
+        w: 0.01
+  RigidNodes:
+    type: models.nodes.RigidNodes
+    init:
+      instance_max_pts: 5000 # max initial points for each instance
+      only_moving: true # only optimize moving instances
+      traj_length_thres: 1.0 # threshold of trajectory length for moving instances
+    ctrl:
+      cull_scale_thresh: 0.1
+      stop_screen_size_at: 30000
+      stop_split_at: 20000
+      cull_out_of_bound: true
+    reg:
+      normal_align_reg:
+        w: 0.01
+      normal_align_cos_reg:
+        w: 0.01
+      sharp_shape_reg:
+        w: 1.
+        step_interval: 10
+        max_gauss_ratio: 10.
+      temporal_smooth_reg:
+        trans:
+          w: 0.01 # optimal value may vary
+          smooth_range: 5 # no ablation
+      flatten:
+        w: 0.05
+    optim:
+      ins_rotation:
+        lr: 0.00001
+        lr_final: 0.000005
+      ins_translation:
+        lr: 0.0005
+        lr_final: 0.0001
+  DeformableNodes:
+    type: models.nodes.DeformableNodes
+    init:
+      instance_max_pts: 5000
+      only_moving: true
+      traj_length_thres: 0.5
+    networks:
+      D: 8
+      W: 256
+      embed_dim: 16
+      x_multires: 10                # default 10
+      t_multires: 10                # default 10
+      deform_quat: True
+      deform_scale: False
+    ctrl:
+      reset_alpha_value: 0.1
+      cull_scale_thresh: 0.1
+      stop_screen_size_at: 30000
+      stop_split_at: 20000
+      sh_degree: 3
+      cull_out_of_bound: false
+      use_deformgs_for_nonrigid: True # default True
+      use_deformgs_after: 3000        # default 3000
+      stop_optimizing_canonical_xyz: True
+    reg:
+      normal_align_reg:
+        w: 0.01
+      normal_align_cos_reg:
+        w: 0.01
+      sharp_shape_reg:
+        w: 1.
+        step_interval: 10
+        max_gauss_ratio: 10.
+      out_of_bound_loss:
+        w: 1.
+        stop_after: 30000
+      temporal_smooth_reg:
+        trans:
+          w: 0.01 # optimal value may vary
+          smooth_range: 5 # optimal value may vary
+    optim:
+      xyz:
+        lr: 1.6e-04
+        lr_final: 1.6e-06
+        scale_factor: 2.
+      embedding:
+        lr: 0.001
+        lr_final: 0.0001
+      deform_network:
+        lr: 1.6e-03
+        lr_final: 1.6e-04
+        scale_factor: 5.
+      ins_rotation:
+        lr: 0.00001
+        lr_final: 0.000005
+      ins_translation:
+        lr: 0.0005
+        lr_final: 0.0001
+  SMPLNodes: 
+    type: models.nodes.SMPLNodes
+    init:
+      only_moving: true
+      traj_length_thres: 0.5
+    reg:
+      normal_align_reg:
+        w: 0.01
+      normal_align_cos_reg:
+        w: 0.01
+      sharp_shape_reg:
+        w: 1.
+        step_interval: 10
+        max_gauss_ratio: 10.
+      temporal_smooth_reg:
+        trans:
+          w: 0.01 # optimal value may vary
+          smooth_range: 5 # range of frames to consider for smoothing
+        # joint_smooth:
+        #   w: 0.01 # optimal value may vary
+      knn_reg:
+        # lambda_std_x: 0.0001
+        lambda_std_q: 0.001
+        lambda_std_s: 0.001
+        lambda_std_o: 0.001
+        lambda_std_shs_dc: 0.001
+        lambda_std_shs_rest: 0.001
+      max_s_square_reg:
+        w: 0.05
+      x_offset:
+        w: 0.2
+      voxel_deformer_reg:
+        lambda_std_w: 0.6
+        lambda_std_w_rest: 0.5
+        lambda_w_norm: 0.6
+        lambda_w_rest_norm: 0.3
+    optim:
+      xyz:
+        lr: 1.6e-04
+        lr_final: 1.6e-06
+        scale_factor: 3.0
+      rotation:
+        lr: 0.005
+      sh_dc:
+        lr: 0.005
+      sh_rest:
+        lr: 0.00025
+      ins_rotation:
+        lr: 0.00001
+        lr_final: 0.000005
+      ins_translation:
+        lr: 0.0005
+        lr_final: 0.0001
+      smpl_rotation:
+        lr: 0.00005
+        lr_final: 0.00001
+      w_dc_vox:
+        lr: 0.0001
+        lr_final: 0.00001
+        opt_after: 10000
+    ctrl:
+      sh_degree: 1
+      opacity_init_value: 0.99
+      ball_gaussians: false
+      constrain_xyz_offset: false
+      knn_update_interval: 100
+      knn_neighbors: 3
+      use_voxel_deformer: true
+      freeze_x: false
+      freeze_o: false
+      freeze_q: false
+      freeze_s: false
+      freeze_shs_dc: false
+      freeze_shs_rest: false
+  Sky:
+    # type: models.modules.EnvLight
+    # params:
+    #   resolution: 1024
+    #   activation_name: exp
+    # optim:
+    #   all:
+    #     lr: 0.01
+    type: models.modules.EnvLight_EQ
+    params:
+      resolution: 1024
+      activation_name: exp
+      min_res: 64
+      max_res: 1024
+      min_roughness: 0.08
+      max_roughness: 0.5
+      init_value: 0.5
+      prior_path: null
+    optim:
+      all:
+        lr: 0.01
+  Affine:
+    type: models.modules.AffineTransform
+    params:
+      embedding_dim: 4
+      base_mlp_layer_width: 64
+      pixel_affine: False
+    optim:
+      all:
+        lr: 1.0e-5
+        weight_decay: 1.0e-6
+  CamPose:
+    type: models.modules.CameraOptModule
+    optim:
+      all:
+        lr: 1.0e-5
+        weight_decay: 1.0e-6
+
+# ------------- render ------------ #
+render:
+  fps: 10 # frames per second for the main rendered output
+  render_full: True # whether to render full resolution videos
+  render_test: True # whether to render test set
+  render_novel: 
+    traj_types:
+      - front_center_interp # type of trajectory for novel view synthesis
+    fps: 24 # frames per second for novel view rendering
+  vis_lidar: False # whether to visualize lidar points on ground truth images
+  vis_sky: False # whether to include "rgb_sky" and "rgb_sky_blend" in rendered keys
+  vis_error: False # whether to include "rgb_error_map" in rendered keys
+
+# ------------- logging ------------ #
+logging:
+  vis_freq: 1000 # how often to visualize training stats
+  print_freq: 500 # how often to print training stats
+  saveckpt_freq: 5000 # how often to save checkpoints
+  save_seperate_video: True # whether to save seperate videos for each scene

@@ -1,0 +1,66 @@
+# Self-crafted dataset configuration
+data:
+  data_root: data/self/path1
+  dataset: self
+  scene_idx: kiara_8_sunset_4k
+  start_timestep: 0
+  end_timestep: -1
+  preload_device: cuda
+  pixel_source:
+    type: datasets.self.self_sourceloader.SelfPixelSource
+    cameras: [0, 1, 2]
+    downscale_when_loading: [2, 2, 2]
+    downscale: 1
+    undistort: False
+    test_image_stride: 0
+    load_sky_mask: True
+    load_gt_sky_mask: False
+    gt_sky_mask_dir: gt_sky_mask
+    gt_sky_mask_ext: png
+    load_dynamic_mask: False
+    load_shading_map: False
+    load_shadow_mask: False
+    load_road_mask: False
+    load_only_calibrations: False
+    load_images_only: False
+    load_objects: False
+    load_smpl: False
+    load_priors: True
+    load_materials: True
+    load_gt_intrinsic: False
+    load_relighted_rgb: False
+    relighted_scene_idx: null
+    gt_intrinsic_dirs:
+      normal: normal
+      albedo: albedo
+      metallic: metallic
+      roughness: roughness
+    gt_intrinsic_exts:
+      normal: exr
+      albedo: exr
+      metallic: exr
+      roughness: exr
+    load_gt_depth: True
+    gt_depth_dir: depth
+    gt_depth_ext: exr
+    prior_type: dr
+    external_source:
+      enable: False
+      # When enabled, this scene is loaded in parallel and can be selected via active_source.
+      data_root: null
+      scene_idx: null
+      relighted_scene_idx: null
+      # Choose which source `get_image()` returns: `primary` (default) or `external`.
+      active_source: primary
+    sampler:
+      buffer_downscale: 8
+      buffer_ratio: 0.5
+      start_enhance_weight: 3
+  lidar_source:
+    type: datasets.waymo.waymo_sourceloader.WaymoLiDARSource
+    load_lidar: False
+    only_use_top_lidar: False
+    truncated_max_range: 80
+    truncated_min_range: -2
+    lidar_downsample_factor: 4
+    lidar_percentile: 0.02

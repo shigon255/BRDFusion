@@ -1,0 +1,16 @@
+# Reference overlay for local point-light rendering.
+# These keys mirror trainer.tracer fields in configs/omnire.yaml.
+
+trainer:
+  tracer:
+    direct_light_mode: point_lights
+    point_lights_use_envmap: true
+    point_lights: []
+    point_lights_file: null
+    point_lights_file_format: blender_area_txt
+    point_lights_file_energy_scale: 1.0
+    point_lights_file_spread_angle_deg: 180.0
+    point_lights_file_inner_ratio: 1.0
+    point_lights_file_direction_axis: z
+    point_lights_file_direction_sign: 1.0
+    point_light_emitter_color_scale: 1.0

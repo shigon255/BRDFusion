@@ -1,0 +1,12 @@
+{
+  "delete": {
+    "RigidNodes": [],
+    "SMPLNodes": [],
+    "DeformableNodes": []
+  },
+  "move": {
+    "RigidNodes": []
+  },
+  "insert": []
+}
+

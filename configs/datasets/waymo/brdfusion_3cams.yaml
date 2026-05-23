@@ -1,0 +1,34 @@
+data:
+  data_root: data/brdfusion/waymo/scenes
+  dataset: waymo
+  scene_idx: 3
+  start_timestep: 0
+  end_timestep: -1
+  preload_device: cuda
+  pixel_source:
+    type: datasets.waymo.waymo_sourceloader.WaymoPixelSource
+    cameras: [0, 1, 2]
+    downscale_when_loading: [2, 2, 2]
+    downscale: 1
+    undistort: True
+    test_image_stride: 0
+    load_sky_mask: True
+    load_dynamic_mask: True
+    load_shading_map: False
+    load_shadow_mask: False
+    load_road_mask: False
+    load_objects: True
+    load_smpl: True
+    prior_type: dr
+    sampler:
+      buffer_downscale: 8
+      buffer_ratio: 0.5
+      start_enhance_weight: 3
+  lidar_source:
+    type: datasets.waymo.waymo_sourceloader.WaymoLiDARSource
+    load_lidar: True
+    only_use_top_lidar: False
+    truncated_max_range: 80
+    truncated_min_range: -2
+    lidar_downsample_factor: 4
+    lidar_percentile: 0.02

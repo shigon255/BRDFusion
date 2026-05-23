@@ -1,0 +1,43 @@
+# Canonical BRDFusion local dataset layout.
+#
+# The source roots default to BRDFusion-local placeholder paths so this file is
+# release-safe. Override them when linking existing prepared data:
+#
+#   BRDFUSION_WAYMO_SOURCE_ROOT=/path/to/waymo/processed/training \
+#   BRDFUSION_SELF_SOURCE_ROOT=/path/to/self \
+#   python tools/data/link_datasets.py --layout configs/data/brdfusion_layout.yaml
+
+version: 1
+root: data/brdfusion
+
+datasets:
+  waymo:
+    scene_root: waymo/scenes
+    source_root: ${oc.env:BRDFUSION_WAYMO_SOURCE_ROOT,data/sources/waymo/processed/training}
+    scenes:
+      - id: "003"
+        source: "003"
+        role: example
+      - id: "114"
+        source: "114"
+        role: example
+
+  self:
+    scene_root: self/scenes
+    source_root: ${oc.env:BRDFUSION_SELF_SOURCE_ROOT,data/sources/self}
+    scenes:
+      - id: path1_qwantani_moon_noon_puresky_4k
+        source: path1_fixed_tree_gamma_full/qwantani_moon_noon_puresky_4k
+        role: train
+        path: path1
+        light: qwantani_moon_noon_puresky_4k
+      - id: path1_qwantani_moon_noon_puresky_4k_rot90
+        source: path1_fixed_tree_gamma_full/qwantani_moon_noon_puresky_4k_rot90
+        role: relight_eval
+        path: path1
+        light: qwantani_moon_noon_puresky_4k_rot90
+      - id: path2_qwantani_moon_noon_puresky_4k
+        source: path2_fixed_tree_gamma_full/qwantani_moon_noon_puresky_4k
+        role: shifted_eval
+        path: path2
+        light: qwantani_moon_noon_puresky_4k

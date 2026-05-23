@@ -1,0 +1,26 @@
+# Stage 2: optimize environment lighting against PBR color only.
+trainer:
+  tracer:
+    use_pbr: true
+  render:
+    freeze_geometry: true
+    freeze_material: true
+    freeze_envmap: false
+  losses:
+    rgb:
+      w: 0.0
+    ssim:
+      w: 0.0
+    pbr_rgb:
+      w: 1.0
+    normal:
+      w: 0.0
+    normal_cos:
+      w: 0.0
+    albedo:
+      w: 0.0
+    roughness:
+      w: 0.0
+    metallic:
+      w: 0.0
+

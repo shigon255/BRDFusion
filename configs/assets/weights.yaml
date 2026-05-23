@@ -1,0 +1,44 @@
+assets:
+  cosmos:
+    root: assets/checkpoints/cosmos
+    download:
+      command: "scripts/setup/download_weights.sh cosmos"
+      note: "Downloads NVIDIA Cosmos DiffusionRenderer checkpoints into the BRDFusion workspace."
+    required:
+      - path: Diffusion_Renderer_Inverse_Cosmos_7B/model.pt
+        size_bytes: 28940280602
+        md5: 77eb5beddf131bfc8235a300132f22e4
+      - path: Diffusion_Renderer_Forward_Cosmos_7B/model.pt
+        size_bytes: 28948078975
+      - path: Cosmos-Tokenize1-CV8x8x8-720p/model.pt
+        size_bytes: 1479537453
+      - path: Cosmos-Tokenize1-CV8x8x8-720p/encoder.jit
+        size_bytes: 86272108
+      - path: Cosmos-Tokenize1-CV8x8x8-720p/decoder.jit
+        size_bytes: 126022330
+      - path: Cosmos-Tokenize1-CV8x8x8-720p/autoencoder.jit
+        size_bytes: 212300573
+      - path: Cosmos-Tokenize1-CV8x8x8-720p/image_mean_std.pt
+        size_bytes: 2370
+      - path: Cosmos-Tokenize1-CV8x8x8-720p/mean_std.pt
+        size_bytes: 4290
+      - path: Cosmos-Tokenize1-CV8x8x8-720p/config.json
+        size_bytes: 51
+      - path: Cosmos-Tokenize1-CV8x8x8-720p/model_config.yaml
+        size_bytes: 92
+
+  diffusionlight:
+    root: assets/checkpoints/diffusionlight
+    download:
+      command: "scripts/setup/download_weights.sh diffusionlight"
+      note: "DiffusionLight-Turbo weights are small enough to copy from a prepared local source or place manually."
+    required:
+      - path: models/ThisIsTheFinal-lora-hdr-continuous-largeT@900/0_-5/checkpoint-2500
+      - path: models/rev3/Flickr2K/Flickr2kPlus_extended/checkpoint-230000
+
+  brdfusion:
+    root: assets/checkpoints/brdfusion
+    download:
+      command: "scripts/setup/download_weights.sh brdfusion"
+      note: "Optional BRDFusion scene checkpoints for reproducing paper examples."
+    required: []

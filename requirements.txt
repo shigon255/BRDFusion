@@ -1,0 +1,47 @@
+omegaconf
+torchmetrics
+fire
+hydra-core
+addict
+rich
+slangtorch
+pytorch_msssim
+
+tensorboard
+wandb==0.19.11
+matplotlib
+plotly
+viser
+
+imageio
+imageio-ffmpeg
+scikit-image
+scikit-learn
+opencv-python
+
+plyfile
+polyscope>=2.3.0
+open3d
+splines
+pyquaternion
+kornia
+einops
+msgpack
+dataclasses_json
+setuptools <72.1.0
+# --find-links https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-2.1.2_cu118.html
+# kaolin==0.17.0
+
+tqdm
+gdown
+libigl
+pygltflib
+
+nerfview
+lpips
+
+# # Fused ssim
+# git+https://github.com/rahul-goel/fused-ssim@1272e21a282342e89537159e4bad508b19b34157
+
+# chumpy
+git+https://github.com/mattloper/chumpy@9b045ff5d6588a24a0bab52c83f032e2ba433e17

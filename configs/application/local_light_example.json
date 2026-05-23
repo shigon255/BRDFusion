@@ -1,0 +1,14 @@
+{
+  "direct_light_mode": "point_lights",
+  "point_lights_use_envmap": true,
+  "point_lights": [
+    {
+      "position": [0.0, 0.0, 2.0],
+      "intensity": [200.0, 180.0, 140.0],
+      "direction": [0.0, 0.0, -1.0],
+      "inner_angle_deg": 20.0,
+      "outer_angle_deg": 45.0
+    }
+  ]
+}
+

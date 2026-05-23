@@ -1,0 +1,33 @@
+# Reference overlay for PBR continuation training.
+# The current tools load one primary config plus CLI overrides; use this file as
+# the source of the overrides passed by scripts/train/train_pbr_from_ckpt.sh.
+
+trainer:
+  tracer:
+    use_pbr: true
+    freeze_envmap: false
+    train_sample_type: envmap
+    eval_sample_type: envmap
+    use_metallic: true
+  losses:
+    normal:
+      w: 0.3
+    normal_cos:
+      w: 0.3
+    albedo:
+      w: 0.5
+    roughness:
+      w: 0.3
+    metallic:
+      w: 0.3
+    pbr_rgb:
+      w: 0.1
+    env_tv:
+      w: 0.01
+    env_scaleinv:
+      w: 0.1
+
+model:
+  Sky:
+    params:
+      prior_path: null

@@ -1,0 +1,1 @@
+"""Metric aggregation compatibility utilities."""

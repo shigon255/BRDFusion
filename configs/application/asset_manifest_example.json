@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "source_checkpoint": "/path/to/source/checkpoint_final.pth",
+  "assets": [
+    {
+      "id": "RigidNodes_0000",
+      "class_name": "RigidNodes",
+      "path": "/path/to/exported_assets/RigidNodes_0000.pth",
+      "anchor_frame": 0,
+      "extent_xyz": [4.0, 1.8, 1.6]
+    }
+  ]
+}

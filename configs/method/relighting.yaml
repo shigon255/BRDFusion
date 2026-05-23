@@ -1,0 +1,17 @@
+# Reference overlay for render-time relighting.
+# Use scripts/render/relight_checkpoint.sh for the active command-line mapping.
+
+render:
+  checkpoint: null
+  new_envmap_path: null
+  new_envmap_path_res: 1024
+  new_envmap_pbr_only: false
+  calibrate_envmap: true
+  calibrate_envmap_source: primary
+  envmap_rotation: null
+  envmap_rotation_vertical: false
+  postfix: _relight
+
+trainer:
+  tracer:
+    use_pbr: true

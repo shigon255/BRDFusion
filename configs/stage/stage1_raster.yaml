@@ -1,0 +1,16 @@
+# Stage 1: rasterized 3DGS reconstruction and material bootstrap.
+trainer:
+  tracer:
+    use_pbr: false
+  render:
+    freeze_geometry: false
+    freeze_material: false
+    freeze_envmap: true
+  losses:
+    rgb:
+      w: 0.8
+    ssim:
+      w: 0.2
+    pbr_rgb:
+      w: 0.0
+
