@@ -45,7 +45,7 @@ dataset_id=$(printf "%03d" $dataset_id)  # Ensure dataset_id is zero-padded to 3
 SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BRDFUSION_ROOT="${BRDFUSION_ROOT:-$(cd "$SCRIPT_ROOT/../.." && pwd)}"
 dataset_prefix="${DATASET_PREFIX:-${BRDFUSION_ROOT}/data/waymo/processed/training/$dataset_id/}"
-CHECKPOINT_DIR="${CHECKPOINT_DIR:-${BRDFUSION_ROOT}/assets/checkpoints/cosmos}"
+CHECKPOINT_DIR="${CHECKPOINT_DIR:-${SCRIPT_ROOT}/checkpoints}"
 chunk_size=57
 overlap_n_frames=50
 width=1280
@@ -56,7 +56,6 @@ set -e
 starting_frames=($(sliding_window_starts $num_timestep $chunk_size $overlap_n_frames))
 
 # postfix="_overlap${overlap_n_frames}"
-# postfix="1cam_51steps"
 postfix=""
 
 save_normal_dir=$dataset_prefix/diffusion_renderer_normal$postfix
@@ -74,9 +73,34 @@ mkdir -p $save_roughness_dir
 mkdir -p $save_metallic_dir
 
 
-cameras=(0)
-# cameras=(0 1 2)
-for camera in "${cameras[@]}"; do
+# Select cameras with CAM_IDS, for example:
+#   CAM_IDS="0 1 2" bash inv_dataset.sh 003 198  # override default single-camera use
+# Defaults to the front camera used by the original BRDFusion scripts.
+CAM_IDS="${CAM_IDS:-0}"
+# shellcheck disable=SC2206
+selected_cameras=( ${CAM_IDS} )
+main_cameras=()
+side_cameras=()
+for camera in "${selected_cameras[@]}"; do
+    case "$camera" in
+        0|1|2) main_cameras+=("$camera") ;;
+        3|4) side_cameras+=("$camera") ;;
+        *)
+            echo "Error: unsupported Waymo camera '$camera'. Use CAM_IDS with ids 0 1 2 3 4." >&2
+            exit 1
+            ;;
+    esac
+done
+
+echo "Selected cameras: ${selected_cameras[*]}"
+if ((${#main_cameras[@]} > 0)); then
+    echo "Main/front cameras: ${main_cameras[*]}"
+fi
+if ((${#side_cameras[@]} > 0)); then
+    echo "Side cameras: ${side_cameras[*]}"
+fi
+
+for camera in "${main_cameras[@]}"; do
     echo "Processing camera $camera"
     
     mkdir -p ./tmp_${dataset_id}
@@ -141,104 +165,108 @@ for camera in "${cameras[@]}"; do
 done
 
 
-echo "Resizing images to 1920x1280"
-python resize_image.py $save_normal_dir 1920 1280
-python resize_image.py $save_depth_dir 1920 1280
-python resize_image.py $save_albedo_dir 1920 1280
-python resize_image.py $save_roughness_dir 1920 1280
-python resize_image.py $save_metallic_dir 1920 1280
+if ((${#main_cameras[@]} > 0)); then
+    echo "Resizing selected main/front camera images to 1920x1280"
+    for camera in "${main_cameras[@]}"; do
+        python resize_image.py $save_normal_dir 1920 1280 --pattern "*_${camera}.jpg"
+        python resize_image.py $save_depth_dir 1920 1280 --pattern "*_${camera}.jpg"
+        python resize_image.py $save_albedo_dir 1920 1280 --pattern "*_${camera}.jpg"
+        python resize_image.py $save_roughness_dir 1920 1280 --pattern "*_${camera}.jpg"
+        python resize_image.py $save_metallic_dir 1920 1280 --pattern "*_${camera}.jpg"
+    done
+fi
 
 
-# # for camera 3 and 4
-# mkdir ./tmp_diffusion_renderer_normal_${dataset_id}
-# mkdir ./tmp_diffusion_renderer_depth_${dataset_id}
-# mkdir ./tmp_diffusion_renderer_albedo_${dataset_id}
-# mkdir ./tmp_diffusion_renderer_roughness_${dataset_id}
-# mkdir ./tmp_diffusion_renderer_metallic_${dataset_id}
+if ((${#side_cameras[@]} > 0)); then
+    echo "Processing side cameras with 1920x886 resize: ${side_cameras[*]}"
+    mkdir -p ./tmp_diffusion_renderer_normal_${dataset_id}
+    mkdir -p ./tmp_diffusion_renderer_depth_${dataset_id}
+    mkdir -p ./tmp_diffusion_renderer_albedo_${dataset_id}
+    mkdir -p ./tmp_diffusion_renderer_roughness_${dataset_id}
+    mkdir -p ./tmp_diffusion_renderer_metallic_${dataset_id}
 
-# cameras=(3 4)
-# for camera in "${cameras[@]}"; do
-#     echo "Processing camera $camera"
+cameras=("${side_cameras[@]}")
+for camera in "${cameras[@]}"; do
+    echo "Processing camera $camera"
     
-#     mkdir -p ./tmp_${dataset_id}
-#     for frame_id in $(seq -f "%03g" 0 $((num_timestep-1))); do
-#         cp "$dataset_prefix/images/${frame_id}_$camera.jpg" ./tmp_${dataset_id}/
-#     done
+    mkdir -p ./tmp_${dataset_id}
+    for frame_id in $(seq -f "%03g" 0 $((num_timestep-1))); do
+        cp "$dataset_prefix/images/${frame_id}_$camera.jpg" ./tmp_${dataset_id}/
+    done
 
-#     CUDA_HOME=$CONDA_PREFIX PYTHONPATH=$(pwd) python cosmos_predict1/diffusion/inference/inference_inverse_renderer.py \
-#         --checkpoint_dir checkpoints --diffusion_transformer_dir Diffusion_Renderer_Inverse_Cosmos_7B \
-#         --dataset_path=tmp_${dataset_id} \
-#         --num_video_frames $chunk_size \
-#         --group_mode folder \
-#         --overlap_n_frames $overlap_n_frames \
-#         --chunk_mode all \
-#         --video_save_folder=output_tmp_${dataset_id} \
-#         --normalize_normal True \
-#         --resize_resolution $height $width \
-#         --height $height \
-#         --width $width \
-#         --offload_diffusion_transformer --offload_tokenizer \
+    CUDA_HOME=$CONDA_PREFIX PYTHONPATH=$(pwd) python cosmos_predict1/diffusion/inference/inference_inverse_renderer.py \
+        --checkpoint_dir "$CHECKPOINT_DIR" --diffusion_transformer_dir Diffusion_Renderer_Inverse_Cosmos_7B \
+        --dataset_path=tmp_${dataset_id} \
+        --num_video_frames $chunk_size \
+        --group_mode folder \
+        --overlap_n_frames $overlap_n_frames \
+        --chunk_mode all \
+        --video_save_folder=output_tmp_${dataset_id} \
+        --normalize_normal True \
+        --resize_resolution $height $width \
+        --height $height \
+        --width $width \
+        --offload_diffusion_transformer --offload_tokenizer \
 
-#     for ((i=0; i<${#starting_frames[@]}; i++)); do
-#         start_frame=${starting_frames[$i]}
-#         end_frame=$((start_frame + chunk_size - 1))
-#         if (( end_frame >= num_timestep )); then
-#             end_frame=$((num_timestep - 1))
-#         fi
-#         batch_id=$(printf "%04d" $i)
+    for ((i=0; i<${#starting_frames[@]}; i++)); do
+        start_frame=${starting_frames[$i]}
+        end_frame=$((start_frame + chunk_size - 1))
+        if (( end_frame >= num_timestep )); then
+            end_frame=$((num_timestep - 1))
+        fi
+        batch_id=$(printf "%04d" $i)
 
-#         for frame_id in $(seq -f "%03g" $start_frame $end_frame); do
-#             gbuffer_frame=$((10#$frame_id - $start_frame))
+        for frame_id in $(seq -f "%03g" $start_frame $end_frame); do
+            gbuffer_frame=$((10#$frame_id - $start_frame))
 
-#             gbuffer_frame_id=$(printf "%04d\n" $gbuffer_frame)
-#             mv output_tmp_${dataset_id}/gbuffer_frames/${batch_id}.${gbuffer_frame_id}.normal.jpg ./tmp_diffusion_renderer_normal_${dataset_id}/${frame_id}_${camera}_${batch_id}.jpg
-#             mv output_tmp_${dataset_id}/gbuffer_frames/${batch_id}.${gbuffer_frame_id}.depth.jpg ./tmp_diffusion_renderer_depth_${dataset_id}/${frame_id}_${camera}_${batch_id}.jpg
-#             mv output_tmp_${dataset_id}/gbuffer_frames/${batch_id}.${gbuffer_frame_id}.basecolor.jpg ./tmp_diffusion_renderer_albedo_${dataset_id}/${frame_id}_${camera}_${batch_id}.jpg
-#             mv output_tmp_${dataset_id}/gbuffer_frames/${batch_id}.${gbuffer_frame_id}.roughness.jpg ./tmp_diffusion_renderer_roughness_${dataset_id}/${frame_id}_${camera}_${batch_id}.jpg
-#             mv output_tmp_${dataset_id}/gbuffer_frames/${batch_id}.${gbuffer_frame_id}.metallic.jpg ./tmp_diffusion_renderer_metallic_${dataset_id}/${frame_id}_${camera}_${batch_id}.jpg
-#         done
-#     done
+            gbuffer_frame_id=$(printf "%04d\n" $gbuffer_frame)
+            mv output_tmp_${dataset_id}/gbuffer_frames/${batch_id}.${gbuffer_frame_id}.normal.jpg ./tmp_diffusion_renderer_normal_${dataset_id}/${frame_id}_${camera}_${batch_id}.jpg
+            mv output_tmp_${dataset_id}/gbuffer_frames/${batch_id}.${gbuffer_frame_id}.depth.jpg ./tmp_diffusion_renderer_depth_${dataset_id}/${frame_id}_${camera}_${batch_id}.jpg
+            mv output_tmp_${dataset_id}/gbuffer_frames/${batch_id}.${gbuffer_frame_id}.basecolor.jpg ./tmp_diffusion_renderer_albedo_${dataset_id}/${frame_id}_${camera}_${batch_id}.jpg
+            mv output_tmp_${dataset_id}/gbuffer_frames/${batch_id}.${gbuffer_frame_id}.roughness.jpg ./tmp_diffusion_renderer_roughness_${dataset_id}/${frame_id}_${camera}_${batch_id}.jpg
+            mv output_tmp_${dataset_id}/gbuffer_frames/${batch_id}.${gbuffer_frame_id}.metallic.jpg ./tmp_diffusion_renderer_metallic_${dataset_id}/${frame_id}_${camera}_${batch_id}.jpg
+        done
+    done
 
-#     rm -r ./tmp_${dataset_id}
-#     rm -r ./output_tmp_${dataset_id}
+    rm -r ./tmp_${dataset_id}
+    rm -r ./output_tmp_${dataset_id}
 
-#     for frame_id in $(seq -f "%03g" 0 $((num_timestep-1))); do
-#         python average_images.py ./tmp_diffusion_renderer_normal_${dataset_id}/${frame_id}_${camera}.jpg ./tmp_diffusion_renderer_normal_${dataset_id}/${frame_id}_${camera}_*.jpg
-#         python average_images.py ./tmp_diffusion_renderer_depth_${dataset_id}/${frame_id}_${camera}.jpg ./tmp_diffusion_renderer_depth_${dataset_id}/${frame_id}_${camera}_*.jpg
-#         python average_images.py ./tmp_diffusion_renderer_albedo_${dataset_id}/${frame_id}_${camera}.jpg ./tmp_diffusion_renderer_albedo_${dataset_id}/${frame_id}_${camera}_*.jpg
-#         python average_images.py ./tmp_diffusion_renderer_roughness_${dataset_id}/${frame_id}_${camera}.jpg ./tmp_diffusion_renderer_roughness_${dataset_id}/${frame_id}_${camera}_*.jpg
-#         python average_images.py ./tmp_diffusion_renderer_metallic_${dataset_id}/${frame_id}_${camera}.jpg ./tmp_diffusion_renderer_metallic_${dataset_id}/${frame_id}_${camera}_*.jpg
+    for frame_id in $(seq -f "%03g" 0 $((num_timestep-1))); do
+        python average_images.py ./tmp_diffusion_renderer_normal_${dataset_id}/${frame_id}_${camera}.jpg ./tmp_diffusion_renderer_normal_${dataset_id}/${frame_id}_${camera}_*.jpg
+        python average_images.py ./tmp_diffusion_renderer_depth_${dataset_id}/${frame_id}_${camera}.jpg ./tmp_diffusion_renderer_depth_${dataset_id}/${frame_id}_${camera}_*.jpg
+        python average_images.py ./tmp_diffusion_renderer_albedo_${dataset_id}/${frame_id}_${camera}.jpg ./tmp_diffusion_renderer_albedo_${dataset_id}/${frame_id}_${camera}_*.jpg
+        python average_images.py ./tmp_diffusion_renderer_roughness_${dataset_id}/${frame_id}_${camera}.jpg ./tmp_diffusion_renderer_roughness_${dataset_id}/${frame_id}_${camera}_*.jpg
+        python average_images.py ./tmp_diffusion_renderer_metallic_${dataset_id}/${frame_id}_${camera}.jpg ./tmp_diffusion_renderer_metallic_${dataset_id}/${frame_id}_${camera}_*.jpg
 
-#         rm ./tmp_diffusion_renderer_normal_${dataset_id}/${frame_id}_${camera}_*.jpg
-#         rm ./tmp_diffusion_renderer_depth_${dataset_id}/${frame_id}_${camera}_*.jpg
-#         rm ./tmp_diffusion_renderer_albedo_${dataset_id}/${frame_id}_${camera}_*.jpg
-#         rm ./tmp_diffusion_renderer_roughness_${dataset_id}/${frame_id}_${camera}_*.jpg
-#         rm ./tmp_diffusion_renderer_metallic_${dataset_id}/${frame_id}_${camera}_*.jpg
-#     done
-# done
+        rm ./tmp_diffusion_renderer_normal_${dataset_id}/${frame_id}_${camera}_*.jpg
+        rm ./tmp_diffusion_renderer_depth_${dataset_id}/${frame_id}_${camera}_*.jpg
+        rm ./tmp_diffusion_renderer_albedo_${dataset_id}/${frame_id}_${camera}_*.jpg
+        rm ./tmp_diffusion_renderer_roughness_${dataset_id}/${frame_id}_${camera}_*.jpg
+        rm ./tmp_diffusion_renderer_metallic_${dataset_id}/${frame_id}_${camera}_*.jpg
+    done
+done
 
-# echo "Resizing images to 1920x886"
-# python resize_image.py ./tmp_diffusion_renderer_normal_${dataset_id} 1920 886
-# python resize_image.py ./tmp_diffusion_renderer_depth_${dataset_id} 1920 886
-# python resize_image.py ./tmp_diffusion_renderer_albedo_${dataset_id} 1920 886
-# python resize_image.py ./tmp_diffusion_renderer_roughness_${dataset_id} 1920 886
-# python resize_image.py ./tmp_diffusion_renderer_metallic_${dataset_id} 1920 886
+echo "Resizing images to 1920x886"
+python resize_image.py ./tmp_diffusion_renderer_normal_${dataset_id} 1920 886
+python resize_image.py ./tmp_diffusion_renderer_depth_${dataset_id} 1920 886
+python resize_image.py ./tmp_diffusion_renderer_albedo_${dataset_id} 1920 886
+python resize_image.py ./tmp_diffusion_renderer_roughness_${dataset_id} 1920 886
+python resize_image.py ./tmp_diffusion_renderer_metallic_${dataset_id} 1920 886
 
-# # Move the resized images to the final directories
-# mv ./tmp_diffusion_renderer_normal_${dataset_id}/* $save_normal_dir
-# mv ./tmp_diffusion_renderer_depth_${dataset_id}/* $save_depth_dir
-# mv ./tmp_diffusion_renderer_albedo_${dataset_id}/* $save_albedo_dir
-# mv ./tmp_diffusion_renderer_roughness_${dataset_id}/* $save_roughness_dir
-# mv ./tmp_diffusion_renderer_metallic_${dataset_id}/* $save_metallic_dir
+# Move the resized images to the final directories
+mv ./tmp_diffusion_renderer_normal_${dataset_id}/* $save_normal_dir
+mv ./tmp_diffusion_renderer_depth_${dataset_id}/* $save_depth_dir
+mv ./tmp_diffusion_renderer_albedo_${dataset_id}/* $save_albedo_dir
+mv ./tmp_diffusion_renderer_roughness_${dataset_id}/* $save_roughness_dir
+mv ./tmp_diffusion_renderer_metallic_${dataset_id}/* $save_metallic_dir
 
-# # Clean up temporary directories
-# rm -r ./tmp_diffusion_renderer_normal_${dataset_id}
-# rm -r ./tmp_diffusion_renderer_depth_${dataset_id}
-# rm -r ./tmp_diffusion_renderer_albedo_${dataset_id}
-# rm -r ./tmp_diffusion_renderer_roughness_${dataset_id}
-# rm -r ./tmp_diffusion_renderer_metallic_${dataset_id}
-
-
+# Clean up temporary directories
+rm -r ./tmp_diffusion_renderer_normal_${dataset_id}
+rm -r ./tmp_diffusion_renderer_depth_${dataset_id}
+rm -r ./tmp_diffusion_renderer_albedo_${dataset_id}
+rm -r ./tmp_diffusion_renderer_roughness_${dataset_id}
+rm -r ./tmp_diffusion_renderer_metallic_${dataset_id}
+fi
 
 
 echo "All processing completed successfully for dataset ID: $dataset_id"

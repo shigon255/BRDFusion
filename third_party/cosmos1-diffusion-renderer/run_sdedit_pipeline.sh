@@ -26,7 +26,7 @@ cd "$REPO_ROOT"
 
 PYTHON_BIN="${PYTHON_BIN:-python}"
 BRDFUSION_ROOT="${BRDFUSION_ROOT:-$(cd "$REPO_ROOT/../.." && pwd)}"
-CHECKPOINT_DIR="${CHECKPOINT_DIR:-$BRDFUSION_ROOT/assets/checkpoints/cosmos}"
+CHECKPOINT_DIR="${CHECKPOINT_DIR:-$REPO_ROOT/checkpoints}"
 
 # Toggle dry run (1 = print commands only, 0 = execute).
 DRY_RUN="${DRY_RUN:-0}"

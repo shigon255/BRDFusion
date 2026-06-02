@@ -3,6 +3,7 @@
 
 trainer:
   tracer:
+    use_pbr: true
     direct_light_mode: point_lights
     point_lights_use_envmap: true
     point_lights: []
@@ -13,4 +14,7 @@ trainer:
     point_lights_file_inner_ratio: 1.0
     point_lights_file_direction_axis: z
     point_lights_file_direction_sign: 1.0
+    point_lights_file_reanchor: null
+    point_lights_file_reanchor_pose_path: null
+    render_point_light_emitters: false
     point_light_emitter_color_scale: 1.0

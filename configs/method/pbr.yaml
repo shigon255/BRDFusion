@@ -3,9 +3,10 @@
 # the source of the overrides passed by scripts/train/train_pbr_from_ckpt.sh.
 
 trainer:
+  render:
+    freeze_envmap: false
   tracer:
     use_pbr: true
-    freeze_envmap: false
     train_sample_type: envmap
     eval_sample_type: envmap
     use_metallic: true

@@ -34,6 +34,20 @@ def _quat_to_rotmat(qx: float, qy: float, qz: float, qw: float) -> np.ndarray:
     )
 
 
+def _resolve_camera_named_file(root: str, cam_name: str, suffix: str, subdir: str = None) -> str:
+    base = os.path.join(root, subdir) if subdir is not None else root
+    names = [cam_name]
+    if cam_name == "Camera_Center":
+        names.append("Cam_Center")
+    elif cam_name == "Cam_Center":
+        names.append("Camera_Center")
+    for name in names:
+        path = os.path.join(base, f"{name}{suffix}")
+        if os.path.exists(path):
+            return path
+    return os.path.join(base, f"{cam_name}{suffix}")
+
+
 def _load_pose_file(path: str) -> Tuple[List[int], List[np.ndarray]]:
     frame_ids = []
     cam_to_worlds = []
@@ -356,16 +370,16 @@ class SelfCameraData(CameraData):
             if self.load_priors:
                 if self.prior_type != "dr":
                     raise ValueError(f"Unsupported prior_type for self dataset: {self.prior_type}")
-                normal_dir = self.prior_dirs.get("normal", "diffusion_renderer_normal")
-                mono_depth_dir = self.prior_dirs.get("mono_depth", "diffusion_renderer_depth")
-                albedo_dir = self.prior_dirs.get("albedo", "diffusion_renderer_albedo")
-                metallic_dir = self.prior_dirs.get("metallic", "diffusion_renderer_metallic")
-                roughness_dir = self.prior_dirs.get("roughness", "diffusion_renderer_roughness")
-                normal_ext = self.prior_exts.get("normal", "jpg")
-                mono_depth_ext = self.prior_exts.get("mono_depth", "jpg")
-                albedo_ext = self.prior_exts.get("albedo", "jpg")
-                metallic_ext = self.prior_exts.get("metallic", "jpg")
-                roughness_ext = self.prior_exts.get("roughness", "jpg")
+                normal_dir = self.prior_dirs.get("normal") or "diffusion_renderer_normal"
+                mono_depth_dir = self.prior_dirs.get("mono_depth") or "diffusion_renderer_depth"
+                albedo_dir = self.prior_dirs.get("albedo") or "diffusion_renderer_albedo"
+                metallic_dir = self.prior_dirs.get("metallic") or "diffusion_renderer_metallic"
+                roughness_dir = self.prior_dirs.get("roughness") or "diffusion_renderer_roughness"
+                normal_ext = self.prior_exts.get("normal") or "jpg"
+                mono_depth_ext = self.prior_exts.get("mono_depth") or "jpg"
+                albedo_ext = self.prior_exts.get("albedo") or "jpg"
+                metallic_ext = self.prior_exts.get("metallic") or "jpg"
+                roughness_ext = self.prior_exts.get("roughness") or "jpg"
 
                 normal_dir_path = resolve_data_subdir(normal_dir)
                 mono_depth_dir_path = resolve_data_subdir(mono_depth_dir)
@@ -411,14 +425,14 @@ class SelfCameraData(CameraData):
                     os.path.join(gt_depth_dir_path, depth_name)
                 )
             if self.load_gt_intrinsic:
-                normal_dir = resolve_data_subdir(self.gt_intrinsic_dirs.get("normal", "normal"))
-                albedo_dir = resolve_data_subdir(self.gt_intrinsic_dirs.get("albedo", "albedo"))
-                metallic_dir = resolve_data_subdir(self.gt_intrinsic_dirs.get("metallic", "metallic"))
-                roughness_dir = resolve_data_subdir(self.gt_intrinsic_dirs.get("roughness", "roughness"))
-                normal_ext = self.gt_intrinsic_exts.get("normal", "exr")
-                albedo_ext = self.gt_intrinsic_exts.get("albedo", "exr")
-                metallic_ext = self.gt_intrinsic_exts.get("metallic", "exr")
-                roughness_ext = self.gt_intrinsic_exts.get("roughness", "exr")
+                normal_dir = resolve_data_subdir(self.gt_intrinsic_dirs.get("normal") or "normal")
+                albedo_dir = resolve_data_subdir(self.gt_intrinsic_dirs.get("albedo") or "albedo")
+                metallic_dir = resolve_data_subdir(self.gt_intrinsic_dirs.get("metallic") or "metallic")
+                roughness_dir = resolve_data_subdir(self.gt_intrinsic_dirs.get("roughness") or "roughness")
+                normal_ext = self.gt_intrinsic_exts.get("normal") or "exr"
+                albedo_ext = self.gt_intrinsic_exts.get("albedo") or "exr"
+                metallic_ext = self.gt_intrinsic_exts.get("metallic") or "exr"
+                roughness_ext = self.gt_intrinsic_exts.get("roughness") or "exr"
 
                 blender_normal_filepaths.append(
                     os.path.join(normal_dir, f"{frame_id:03d}_{self.cam_id}.{normal_ext}")
@@ -458,7 +472,7 @@ class SelfCameraData(CameraData):
 
     def load_calibrations(self):
         intrinsic = np.loadtxt(
-            os.path.join(self.data_path, "intrinsics", f"{self.cam_name}.txt")
+            _resolve_camera_named_file(self.data_path, self.cam_name, ".txt", subdir="intrinsics")
         )
         fx, fy, cx, cy = intrinsic[0], intrinsic[1], intrinsic[2], intrinsic[3]
         k1, k2, p1, p2, k3 = intrinsic[4], intrinsic[5], intrinsic[6], intrinsic[7], intrinsic[8]
@@ -732,7 +746,7 @@ class SelfPixelSource(ScenePixelSource):
                     )
 
         ref_cam_name = DATASETS_CONFIG[self.dataset_name][self.camera_list[0]]["camera_name"]
-        ref_pose_path = os.path.join(self.data_path, f"{ref_cam_name}_poses.txt")
+        ref_pose_path = _resolve_camera_named_file(self.data_path, ref_cam_name, "_poses.txt")
         ref_frame_ids, ref_poses = _load_pose_file(ref_pose_path)
         ref_pose = ref_poses[0]
         world_from_scene = np.linalg.inv(ref_pose)
@@ -740,7 +754,7 @@ class SelfPixelSource(ScenePixelSource):
 
         for idx, cam_id in enumerate(self.camera_list):
             cam_name = DATASETS_CONFIG[self.dataset_name][cam_id]["camera_name"]
-            pose_path = os.path.join(self.data_path, f"{cam_name}_poses.txt")
+            pose_path = _resolve_camera_named_file(self.data_path, cam_name, "_poses.txt")
             logger.info("Loading camera %s", cam_name)
             camera = SelfCameraData(
                 dataset_name=self.dataset_name,
@@ -785,7 +799,7 @@ class SelfPixelSource(ScenePixelSource):
             )
             if use_external_source:
                 external_cam_name = DATASETS_CONFIG[self.dataset_name][cam_id]["camera_name"]
-                external_pose_path = os.path.join(external_data_path, f"{external_cam_name}_poses.txt")
+                external_pose_path = _resolve_camera_named_file(external_data_path, external_cam_name, "_poses.txt")
                 external_camera = SelfCameraData(
                     dataset_name=self.dataset_name,
                     data_path=external_data_path,

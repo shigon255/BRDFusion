@@ -353,8 +353,8 @@ class CameraData(object):
             # mono_depth_folder = 'pi3_depth'
             # mono_depth_ext = 'npy'
 
-            mono_depth_folder = prior_dirs.get("mono_depth", "diffusion_renderer_depth")
-            mono_depth_ext = prior_exts.get("mono_depth", "jpg")
+            mono_depth_folder = prior_dirs.get("mono_depth") or "diffusion_renderer_depth"
+            mono_depth_ext = prior_exts.get("mono_depth") or "jpg"
 
             # mono_depth_folder = 'depth_vipe'
             # mono_depth_ext = 'exr'
@@ -365,23 +365,23 @@ class CameraData(object):
             )
         
             if prior_type == "rgbx":
-                normal_dir = prior_dirs.get("normal", "normals")
-                albedo_dir = prior_dirs.get("albedo", "albedos")
-                metallic_dir = prior_dirs.get("metallic", "metallics")
-                roughness_dir = prior_dirs.get("roughness", "roughnesses")
-                normal_ext = prior_exts.get("normal", "jpg")
-                albedo_ext = prior_exts.get("albedo", "jpg")
-                metallic_ext = prior_exts.get("metallic", "jpg")
-                roughness_ext = prior_exts.get("roughness", "jpg")
+                normal_dir = prior_dirs.get("normal") or "normals"
+                albedo_dir = prior_dirs.get("albedo") or "albedos"
+                metallic_dir = prior_dirs.get("metallic") or "metallics"
+                roughness_dir = prior_dirs.get("roughness") or "roughnesses"
+                normal_ext = prior_exts.get("normal") or "jpg"
+                albedo_ext = prior_exts.get("albedo") or "jpg"
+                metallic_ext = prior_exts.get("metallic") or "jpg"
+                roughness_ext = prior_exts.get("roughness") or "jpg"
             elif prior_type == "dr":
-                normal_dir = prior_dirs.get("normal", "diffusion_renderer_normal")
-                albedo_dir = prior_dirs.get("albedo", "diffusion_renderer_albedo")
-                metallic_dir = prior_dirs.get("metallic", "diffusion_renderer_metallic")
-                roughness_dir = prior_dirs.get("roughness", "diffusion_renderer_roughness")
-                normal_ext = prior_exts.get("normal", "jpg")
-                albedo_ext = prior_exts.get("albedo", "jpg")
-                metallic_ext = prior_exts.get("metallic", "jpg")
-                roughness_ext = prior_exts.get("roughness", "jpg")
+                normal_dir = prior_dirs.get("normal") or "diffusion_renderer_normal"
+                albedo_dir = prior_dirs.get("albedo") or "diffusion_renderer_albedo"
+                metallic_dir = prior_dirs.get("metallic") or "diffusion_renderer_metallic"
+                roughness_dir = prior_dirs.get("roughness") or "diffusion_renderer_roughness"
+                normal_ext = prior_exts.get("normal") or "jpg"
+                albedo_ext = prior_exts.get("albedo") or "jpg"
+                metallic_ext = prior_exts.get("metallic") or "jpg"
+                roughness_ext = prior_exts.get("roughness") or "jpg"
             else:
                 raise ValueError(f"Unknown prior type: {prior_type}. Supported types are 'rgbx' and 'dr'.")
 

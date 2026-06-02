@@ -88,13 +88,15 @@ if __name__ == "__main__":
     parser.add_argument('--mask_dirname', type=str, default="fine_dynamic_masks")
 
     # Algorithm configs
-    parser.add_argument('--segformer_path', type=str, default='/home/guojianfei/ai_ws/SegFormer')
+    parser.add_argument('--segformer_path', type=str, default=os.environ.get('SEGFORMER_PATH'))
     parser.add_argument('--config', help='Config file', type=str, default=None)
     parser.add_argument('--checkpoint', help='Checkpoint file', type=str, default=None)
     parser.add_argument('--device', default='cuda:0', help='Device used for inference')
     parser.add_argument('--palette', default='cityscapes', help='Color palette used for segmentation map')
     
     args = parser.parse_args()
+    if args.segformer_path is None:
+        raise ValueError('Set --segformer_path or SEGFORMER_PATH to the SegFormer checkout.')
     if args.config is None:
         args.config = os.path.join(args.segformer_path, 'local_configs', 'segformer', 'B5', 'segformer.b5.1024x1024.city.160k.py')
     if args.checkpoint is None:

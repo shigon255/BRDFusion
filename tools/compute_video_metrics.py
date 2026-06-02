@@ -232,7 +232,7 @@ def main() -> None:
     parser.add_argument("--relight_output_json", type=str, default=None)
     parser.add_argument("--intrinsic_output_json", type=str, default=None)
     parser.add_argument("--rou_met_srgb", action="store_true", help="Whether to apply sRGB->linear conversion for roughness/metallic videos before computing metrics.")
-    parser.add_argument("--dataset", type=str, default=None, help="Optional dataset override, e.g. self/3cams")
+    parser.add_argument("--dataset", type=str, default=None, help="Optional dataset override, e.g. self/brdfusion_3cams")
     parser.add_argument("--dataset_source", type=str, default=None, choices=["primary", "external"], help="For self dataset, choose GT source branch")
     parser.add_argument("--color_correction", action="store_true", help="Apply per-image per-channel affine color correction (LSQ scale+bias) to predictions before computing metrics.")
     parser.add_argument("--paste_gt_sky_for_image", action="store_true", help="For image RGB metrics, replace predicted sky pixels with GT RGB using the dataset sky mask before computing metrics.")

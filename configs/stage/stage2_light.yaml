@@ -1,4 +1,4 @@
-# Stage 2: optimize environment lighting against PBR color only.
+# Stage 2: DriveStudio-compatible environment lighting optimization.
 trainer:
   tracer:
     use_pbr: true
@@ -8,19 +8,19 @@ trainer:
     freeze_envmap: false
   losses:
     rgb:
-      w: 0.0
+      w: 0.8
     ssim:
-      w: 0.0
+      w: 0.2
     pbr_rgb:
-      w: 1.0
+      w: 0.1
     normal:
-      w: 0.0
+      w: 0.3
     normal_cos:
-      w: 0.0
+      w: 0.3
     albedo:
-      w: 0.0
+      w: 0.5
     roughness:
-      w: 0.0
+      w: 0.3
     metallic:
-      w: 0.0
+      w: 0.3
 

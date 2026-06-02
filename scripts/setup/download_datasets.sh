@@ -9,37 +9,35 @@ TARGET="${1:-}"
 case "${TARGET}" in
   waymo)
     cat <<EOF
-Waymo data requires account access and preprocessing.
+Waymo data requires account access and DriveStudio preprocessing.
 
 Place raw/downloaded data under:
-  ${REPO_ROOT}/data/waymo/
+  ${REPO_ROOT}/data/waymo/raw/
 
 Then run the documented preprocessing wrappers:
-  RAW_ROOT=${REPO_ROOT}/data/waymo/raw \\
-  TARGET_ROOT=${REPO_ROOT}/data/waymo/processed \\
+  RAW_ROOT=${REPO_ROOT}/data/waymo/raw \
+  TARGET_ROOT=${REPO_ROOT}/data/waymo/processed \
   scripts/data/prepare_waymo.sh
 
-Expose processed scenes to BRDFusion configs with:
-  BRDFUSION_WAYMO_SOURCE_ROOT=${REPO_ROOT}/data/waymo/processed/training \\
-  python tools/data/link_datasets.py --dataset waymo --require_source
+BRDFusion uses the DriveStudio processed layout directly:
+  ${REPO_ROOT}/data/waymo/processed/training/<scene_id>/
+
+After preprocessing, verify with:
+  DATASET=waymo DATA_ROOT=data/waymo/processed/training SCENE=<scene_id> CAM_IDS="0" CHECK_PRIORS=0 scripts/data/check_dataset_layout.sh
 EOF
     ;;
   self)
     cat <<EOF
-Self dataset can be placed under:
-  ${REPO_ROOT}/data/sources/self/
+Self dataset should keep the DriveStudio-style path layout under:
+  ${REPO_ROOT}/data/self/<path_name>/<scene_id>/
 
 Expected examples:
-  ${REPO_ROOT}/data/sources/self/path1_fixed_tree_gamma_full/<scene>/
-  ${REPO_ROOT}/data/sources/self/path1_fixed_tree_gamma_full_exr_intrinsic/<scene>/
-  ${REPO_ROOT}/data/sources/self/path1-3-calib_fixed_tree_gamma_full/<scene>/
-
-Expose scenes to BRDFusion configs with:
-  BRDFUSION_SELF_SOURCE_ROOT=${REPO_ROOT}/data/sources/self \\
-  python tools/data/link_datasets.py --dataset self --require_source
+  ${REPO_ROOT}/data/self/path1_fixed_tree_gamma_full/qwantani_moon_noon_puresky_4k/
+  ${REPO_ROOT}/data/self/path1_fixed_tree_gamma_full/qwantani_moon_noon_puresky_4k_rot90/
+  ${REPO_ROOT}/data/self/path2_fixed_tree_gamma_full/qwantani_moon_noon_puresky_4k/
 
 After placement, verify with:
-  DATASET=self DATA_ROOT=data/brdfusion/self/scenes SCENE=<canonical_scene_id> CAM_IDS="0 1 2" scripts/data/check_dataset_layout.sh
+  DATASET=self DATA_ROOT=data/self/<path_name> SCENE=<scene_id> CAM_IDS="0" CHECK_PRIORS=0 scripts/data/check_dataset_layout.sh
 EOF
     ;;
   all)

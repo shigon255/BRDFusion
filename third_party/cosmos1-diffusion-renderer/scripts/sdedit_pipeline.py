@@ -139,6 +139,18 @@ def validate_same_frame_count(paths: Iterable[Path]) -> int:
     return uniq[0]
 
 
+def resolve_envmap_path(input_root: Path, prefix: str, cam_id: int) -> Path:
+    candidates = [
+        input_root / f"{prefix}{cam_id}.hdr",
+        input_root / f"{prefix}{cam_id}.exr",
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    tried = ", ".join(str(p) for p in candidates)
+    raise FileNotFoundError(f"Missing envmap for cam {cam_id}. Tried: {tried}")
+
+
 def ensure_file(path: Path, label: str) -> None:
     if not path.exists() or not path.is_file():
         raise FileNotFoundError(f"Missing {label}: {path}")
@@ -602,9 +614,7 @@ def run_forward(args: argparse.Namespace) -> None:
     step = args.chunk_size - args.overlap
 
     env_root = Path(args.input_root)
-    envmaps = {cam_id: env_root / f"{args.envmap_prefix}{cam_id}.hdr" for cam_id in CAM_IDS}
-    for cam_id, env in envmaps.items():
-        ensure_file(env, f"envmap for cam {cam_id}")
+    envmaps = {cam_id: resolve_envmap_path(env_root, args.envmap_prefix, cam_id) for cam_id in CAM_IDS}
 
     log(f"Discovered forward inputs under {args.input_root}")
     log(f"Input frame count={frame_count}, fps={fps}, chunk_starts={starts}")

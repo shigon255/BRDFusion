@@ -494,7 +494,7 @@ def render(
             
 
             # ------------- lidar ------------- #
-            if "lidar_depth_map" in image_infos:
+            if "lidar_depth_map" in image_infos and "pixels" in image_infos:
                 depth_map = image_infos["lidar_depth_map"]
                 depth_img = depth_map.cpu().numpy()
                 depth_img = depth_visualizer(depth_img, depth_img > 0)

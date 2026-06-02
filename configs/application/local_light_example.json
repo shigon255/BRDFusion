@@ -1,14 +1,19 @@
 {
-  "direct_light_mode": "point_lights",
-  "point_lights_use_envmap": true,
-  "point_lights": [
-    {
-      "position": [0.0, 0.0, 2.0],
-      "intensity": [200.0, 180.0, 140.0],
-      "direction": [0.0, 0.0, -1.0],
-      "inner_angle_deg": 20.0,
-      "outer_angle_deg": 45.0
+  "trainer": {
+    "tracer": {
+      "use_pbr": true,
+      "direct_light_mode": "point_lights",
+      "point_lights_use_envmap": true,
+      "render_point_light_emitters": true,
+      "point_lights": [
+        {
+          "position": [46.5,30.3,8.0],
+          "intensity": [152,126,75],
+          "direction": [0.03,-0.04,-0.95],
+          "inner_angle_deg": 30.0,
+          "outer_angle_deg": 65.0
+        }
+      ]
     }
-  ]
+  }
 }
-

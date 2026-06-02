@@ -19,6 +19,8 @@ MODALITIES = [
     "albedo",
     "roughness",
     "metallic",
+    "gt_sky_mask",
+    "dlenvmap",
     "diffusion_renderer_normal",
     "diffusion_renderer_depth",
     "diffusion_renderer_albedo",
@@ -65,7 +67,7 @@ def _scene_dirs(root: Path, max_scenes: int) -> List[Path]:
 
 def main() -> None:
     parser = argparse.ArgumentParser("Inspect BRDFusion dataset scene folders.")
-    parser.add_argument("roots", nargs="+", help="Scene root(s), for example data/brdfusion/self/scenes.")
+    parser.add_argument("roots", nargs="+", help="Scene root(s), for example data/self/path1_fixed_tree_gamma_full or data/waymo/processed/training.")
     parser.add_argument("--max_scenes", type=int, default=20)
     args = parser.parse_args()
 

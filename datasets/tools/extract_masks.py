@@ -86,15 +86,22 @@ if __name__ == "__main__":
     parser.add_argument('--no_compress', action='store_true')
     parser.add_argument('--rgb_dirname', type=str, default="images")
     parser.add_argument('--mask_dirname', type=str, default="fine_dynamic_masks")
+    parser.add_argument(
+        '--allow_string_scene_ids',
+        action='store_true',
+        help='Parse split-file scene ids as strings. Use this for self dataset scene names.',
+    )
 
     # Algorithm configs
-    parser.add_argument('--segformer_path', type=str, default='/home/guojianfei/ai_ws/SegFormer')
+    parser.add_argument('--segformer_path', type=str, default=os.environ.get('SEGFORMER_PATH'))
     parser.add_argument('--config', help='Config file', type=str, default=None)
     parser.add_argument('--checkpoint', help='Checkpoint file', type=str, default=None)
     parser.add_argument('--device', default='cuda:0', help='Device used for inference')
     parser.add_argument('--palette', default='cityscapes', help='Color palette used for segmentation map')
     
     args = parser.parse_args()
+    if args.segformer_path is None:
+        raise ValueError('Set --segformer_path or SEGFORMER_PATH to the SegFormer checkout.')
     if args.config is None:
         args.config = os.path.join(args.segformer_path, 'local_configs', 'segformer', 'B5', 'segformer.b5.1024x1024.city.160k.py')
     if args.checkpoint is None:
@@ -106,7 +113,7 @@ if __name__ == "__main__":
         # parse the split file
         split_file = open(args.split_file, "r").readlines()[1:]
         # NOTE: small hack here, to be refined in the futher (TODO)
-        if "kitti" in args.split_file or "nuplan" in args.split_file:
+        if args.allow_string_scene_ids or "kitti" in args.split_file or "nuplan" in args.split_file:
             scene_ids_list = [line.strip().split(",")[0] for line in split_file]
         else:
             scene_ids_list = [int(line.strip().split(",")[0]) for line in split_file]

@@ -1429,11 +1429,15 @@ class MultiTrainer(BasicTrainer):
         N, L = sampling_dirs.shape[:2]
         intensity_mode = self.tracer_cfg.get("point_light_intensity_mode", "radiant_intensity")
         falloff_exponent = float(self.tracer_cfg.get("point_light_falloff_exponent", 2.0))
+        min_distance = float(self.tracer_cfg.get("point_light_min_distance", 0.0))
         if falloff_exponent < 0.0:
             raise ValueError("point_light_falloff_exponent must be non-negative.")
+        if min_distance < 0.0:
+            raise ValueError("point_light_min_distance must be non-negative.")
         direct_lights = point_light_intensities[None, :, :].expand(N, L, 3)
         if intensity_mode == "radiant_intensity":
-            distance_term = light_distances[..., None].pow(falloff_exponent).clamp_min(1e-6)
+            safe_distances = light_distances.clamp_min(min_distance)
+            distance_term = safe_distances[..., None].pow(falloff_exponent).clamp_min(1e-6)
             direct_lights = direct_lights / distance_term
         elif intensity_mode == "irradiance_like":
             pass

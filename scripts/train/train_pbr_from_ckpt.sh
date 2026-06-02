@@ -2,6 +2,8 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+export CC="${CC:-gcc-11}"
+export CXX="${CXX:-g++-11}"
 cd "${REPO_ROOT}"
 export PYTHONPATH="${PYTHONPATH:-${REPO_ROOT}}"
 
@@ -11,7 +13,7 @@ export PYTHONPATH="${PYTHONPATH:-${REPO_ROOT}}"
 
 CONFIG="${CONFIG:-configs/omnire.yaml}"
 PROJECT="${PROJECT:-brdfusion}"
-DATASET="${DATASET:-self/3cams}"
+DATASET="${DATASET:-self/brdfusion_1cam}"
 
 cmd=(
   python tools/train.py
@@ -44,6 +46,13 @@ cmd+=(
   trainer.tracer.use_pbr=true
 )
 
+if [[ -n "${NUM_ITERS:-}" && -n "${ADDITIONAL_ITERS:-}" ]]; then
+  echo "Set only one of NUM_ITERS or ADDITIONAL_ITERS." >&2
+  exit 1
+fi
+if [[ -n "${ADDITIONAL_ITERS:-}" ]]; then
+  NUM_ITERS="$(python -c 'import sys, torch; ckpt = torch.load(sys.argv[1], map_location="cpu"); print(int(ckpt["step"]) + int(sys.argv[2]))' "${CKPT}" "${ADDITIONAL_ITERS}")"
+fi
 if [[ -n "${NUM_ITERS:-}" ]]; then
   cmd+=(trainer.optim.num_iters="${NUM_ITERS}")
 fi

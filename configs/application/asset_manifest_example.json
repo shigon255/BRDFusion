@@ -1,13 +1,23 @@
 {
-  "version": 1,
+  "format_version": 1,
+  "export_mode": "per_object",
   "source_checkpoint": "/path/to/source/checkpoint_final.pth",
-  "assets": [
+  "output_dir": "/path/to/exported_assets",
+  "classes": ["RigidNodes", "SMPLNodes"],
+  "items": [
     {
-      "id": "RigidNodes_0000",
+      "asset_id": "RigidNodes_0000",
       "class_name": "RigidNodes",
-      "path": "/path/to/exported_assets/RigidNodes_0000.pth",
+      "source_instance_id": 0,
+      "source_instance_ids": [0],
+      "num_points": 12000,
       "anchor_frame": 0,
-      "extent_xyz": [4.0, 1.8, 1.6]
+      "asset_path": "RigidNodes/RigidNodes_0000.pth",
+      "preview_path": "RigidNodes/RigidNodes_0000.png",
+      "metadata": {
+        "anchor_frame": 0,
+        "extent_xyz": [4.0, 1.8, 1.6]
+      }
     }
   ]
 }

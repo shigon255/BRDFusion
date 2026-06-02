@@ -1,8 +1,8 @@
 # Self-crafted dataset configuration
 data:
-  data_root: data/self/path1
+  data_root: data/self/path1_fixed_tree_gamma_full
   dataset: self
-  scene_idx: kiara_8_sunset_4k
+  scene_idx: qwantani_moon_noon_puresky_4k
   start_timestep: 0
   end_timestep: -1
   preload_device: cuda

@@ -47,7 +47,7 @@ BRDFUSION_ROOT="${BRDFUSION_ROOT:-$(cd "$SCRIPT_ROOT/../.." && pwd)}"
 dataset_base="${DATASET_BASE:-${BRDFUSION_ROOT}/data/self}"
 path_name=${2:-path1_tree_gamma_full}
 num_timestep_override=$3
-CHECKPOINT_DIR="${CHECKPOINT_DIR:-${BRDFUSION_ROOT}/assets/checkpoints/cosmos}"
+CHECKPOINT_DIR="${CHECKPOINT_DIR:-${SCRIPT_ROOT}/checkpoints}"
 chunk_size=57  # Required by the model
 overlap_n_frames=50
 width=1280
@@ -72,9 +72,44 @@ else
     scenes=($(ls -d $dataset_base/$path_name/*/ | xargs -n 1 basename))
 fi
 
-# cameras=("Camera_Center" "Cam_Left" "Cam_Right")
-cameras=("Camera_Center")
-postfix="1cam_51steps"
+resolve_self_cameras() {
+    local selected=()
+    if [ -n "${CAM_NAMES:-}" ]; then
+        # shellcheck disable=SC2206
+        selected=( ${CAM_NAMES} )
+    else
+        local cam_ids="${CAM_IDS:-0}"
+        local cam_id
+        # shellcheck disable=SC2206
+        for cam_id in ${cam_ids}; do
+            case "$cam_id" in
+                0) selected+=("Camera_Center") ;;
+                1) selected+=("Cam_Left") ;;
+                2) selected+=("Cam_Right") ;;
+                Camera_Center|Cam_Left|Cam_Right) selected+=("$cam_id") ;;
+                *)
+                    echo "Error: unsupported self camera '$cam_id'. Use CAM_IDS=\"0 1 2\" or CAM_NAMES=\"Camera_Center Cam_Left Cam_Right\"." >&2
+                    return 1
+                    ;;
+            esac
+        done
+    fi
+
+    local camera
+    for camera in "${selected[@]}"; do
+        if [ -z "${cam_idx_map[$camera]+x}" ]; then
+            echo "Error: unsupported self camera name '$camera'. Use Camera_Center, Cam_Left, or Cam_Right." >&2
+            return 1
+        fi
+    done
+
+    echo "${selected[@]}"
+}
+
+camera_list="$(resolve_self_cameras)" || exit 1
+read -r -a cameras <<< "$camera_list"
+echo "Selected cameras: ${cameras[*]}"
+postfix=""
 for scene in "${scenes[@]}"; do
     echo "=========================================="
     echo "Processing scene: $scene"

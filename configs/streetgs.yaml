@@ -1,5 +1,5 @@
 seed: 0
-dataset: waymo/3cams
+dataset: waymo/1cams
 
 # ------------- Trainer ------------ #
 trainer:

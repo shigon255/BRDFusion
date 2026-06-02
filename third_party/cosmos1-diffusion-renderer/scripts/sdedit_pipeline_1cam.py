@@ -137,6 +137,18 @@ def validate_same_frame_count(paths: Iterable[Path]) -> int:
     return uniq[0]
 
 
+def resolve_envmap_path(input_root: Path, prefix: str, cam_id: int) -> Path:
+    candidates = [
+        input_root / f"{prefix}{cam_id}.hdr",
+        input_root / f"{prefix}{cam_id}.exr",
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    tried = ", ".join(str(p) for p in candidates)
+    raise FileNotFoundError(f"Missing envmap for cam {cam_id}. Tried: {tried}")
+
+
 def ensure_file(path: Path, label: str) -> None:
     if not path.exists() or not path.is_file():
         raise FileNotFoundError(f"Missing {label}: {path}")
@@ -420,6 +432,8 @@ def run_inverse(args: argparse.Namespace) -> None:
                     str(args.normalize_normal),
                     "--inference_passes",
                     pass_name,
+                    "--checkpoint_dir",
+                    str(args.checkpoint_dir),
                 ]
                 if mode == "sigma":
                     cmd.extend(["--sdedit_sigma", str(value)])
@@ -490,8 +504,7 @@ def run_forward(args: argparse.Namespace) -> None:
     starts = sliding_window_starts(frame_count, args.chunk_size, args.overlap)
     step = args.chunk_size - args.overlap
 
-    envmap = Path(args.input_root) / f"{args.envmap_prefix}{CAM_ID}.hdr"
-    ensure_file(envmap, f"envmap for cam {CAM_ID}")
+    envmap = resolve_envmap_path(Path(args.input_root), args.envmap_prefix, CAM_ID)
 
     log(f"Discovered forward inputs under {args.input_root}")
     log(f"Input frame count={frame_count}, fps={fps}, chunk_starts={starts}")
@@ -558,6 +571,8 @@ def run_forward(args: argparse.Namespace) -> None:
                 str(args.scheduler_rho),
                 "--seed",
                 str(args.seed),
+                "--checkpoint_dir",
+                str(args.checkpoint_dir),
             ]
             if mode == "sigma":
                 cmd.extend(["--sdedit_sigma", str(value)])
@@ -658,6 +673,7 @@ def add_common_args(parser: argparse.ArgumentParser, *, forward: bool) -> None:
     parser.add_argument("--tmp_root", type=str, default=".sdedit_tmp")
     parser.add_argument("--post_resize_width", type=int, default=None)
     parser.add_argument("--post_resize_height", type=int, default=None)
+    parser.add_argument("--checkpoint_dir", type=str, default="checkpoints")
     parser.add_argument("--keep_tmp", action="store_true")
     parser.add_argument("--dry_run", action="store_true")
     if forward:

@@ -2,6 +2,11 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+TARGET_ENV="$(python3 "${REPO_ROOT}/tools/env_config.py" --operation sky_mask_extract --print_env 2>/dev/null || printf 'segformer')"
+if [[ "${BRDFUSION_SKIP_CONDA_RUN:-0}" != "1" && -z "${BRDFUSION_IN_CONDA_RUN:-}" && -z "${PYTHON_BIN+x}" && "${CONDA_DEFAULT_ENV:-}" != "${TARGET_ENV}" ]]; then
+  SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+  exec python3 "${REPO_ROOT}/tools/env_config.py" --operation sky_mask_extract --exec "${SCRIPT_PATH}" "$@"
+fi
 cd "${REPO_ROOT}"
 export PYTHONPATH="${PYTHONPATH:-${REPO_ROOT}}"
 

@@ -1,3 +1,10 @@
 [submodule "third_party/Humans4D"]
 	path = third_party/Humans4D
 	url = https://github.com/shubham-goel/4D-Humans.git
+[submodule "third_party/3dgrut/thirdparty/tiny-cuda-nn"]
+	path = third_party/3dgrut/thirdparty/tiny-cuda-nn
+	url = https://github.com/NVlabs/tiny-cuda-nn.git
+[submodule "third_party/3dgrut/threedgrt_tracer/dependencies/optix-dev"]
+	path = third_party/3dgrut/threedgrt_tracer/dependencies/optix-dev
+	url = https://github.com/NVIDIA/optix-dev.git
+	branch = v7.5.0

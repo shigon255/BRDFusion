@@ -63,7 +63,7 @@ def main() -> None:
     parser.add_argument("--end_timestep", type=int, required=True)
     parser.add_argument("--test_image_stride", type=int, required=True)
     parser.add_argument("--image_output_json", type=str, default=None)
-    parser.add_argument("--dataset", type=str, default="waymo/1cams")
+    parser.add_argument("--dataset", type=str, default="waymo/brdfusion_1cam")
     parser.add_argument("--dataset_source", type=str, default=None, choices=["primary", "external"], help="For self dataset, choose GT source branch")
     parser.add_argument("--cam_ids", type=str, default=None)
     parser.add_argument("opts", nargs=argparse.REMAINDER, default=[])

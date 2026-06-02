@@ -2,6 +2,8 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+export CC="${CC:-gcc-11}"
+export CXX="${CXX:-g++-11}"
 cd "${REPO_ROOT}"
 export PYTHONPATH="${PYTHONPATH:-${REPO_ROOT}}"
 

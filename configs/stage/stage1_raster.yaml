@@ -5,12 +5,12 @@ trainer:
   render:
     freeze_geometry: false
     freeze_material: false
-    freeze_envmap: true
+    freeze_envmap: false
   losses:
     rgb:
       w: 0.8
     ssim:
       w: 0.2
     pbr_rgb:
-      w: 0.0
+      w: 0.1
 

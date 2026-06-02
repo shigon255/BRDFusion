@@ -1,5 +1,5 @@
 # Reference overlay for render-time relighting.
-# Use scripts/render/relight_checkpoint.sh for the active command-line mapping.
+# Use scripts/applications/render.sh for the active command-line mapping.
 
 render:
   checkpoint: null

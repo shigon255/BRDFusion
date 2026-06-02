@@ -1,142 +1,681 @@
-# BRDFusion
+<div align="center">
+  <h1><img src="./assets/logo.png" align="top" width="38" height="38" />&nbsp;BRDFusion: Physics Meets Generation for Urban Scene Inverse Rendering</h1>
 
-BRDFusion is a research codebase for PBR-aware 3D Gaussian scene
-reconstruction, relighting, and generative rendering on driving scenes. It
-builds on the DriveStudio/OmniRe codebase and adds:
+  <p>
+    <a href="https://shigon255.github.io/"><strong>Yi-Ruei Liu</strong></a> ·
+    <a href="https://jayinnn.dev/"><strong>Jie-Ying Lee</strong></a> ·
+    <strong>Zheng-Hui Huang</strong> ·
+    <a href="https://yulunalexliu.github.io/"><strong>Yu-Lun Liu</strong></a> ·
+    <a href="https://chih-hao-lin.github.io/"><strong>Chih-Hao Lin</strong></a>
+  </p>
 
-- per-Gaussian PBR material properties: albedo, metallic, roughness, and normals
-- physically based rendering through 3DGRT ray tracing
-- HDR environment-map light optimization
-- DiffusionRenderer inverse priors, generative refinement, and generative rendering
-- DiffusionLight-Turbo HDR lighting priors
-- staged optimization for geometry/material/light reconstruction
-- relighting, local-light rendering, and dynamic-object editing utilities
+  <h3>
+    <a href="#">🌐 Project Page</a> |
+    <a href="#">📄 arXiv</a> |
+    <a href="#">🤗 Dataset</a> |
+    <a href="#">🤗 Pretrained Checkpoints</a> |
+    <a href="#">🤗 Eval Results</a>
+  </h3>
+</div>
 
-This repository is organized as a self-contained workspace: source code is
-vendored under `third_party/`, while large datasets, priors, checkpoints, and
-outputs live in gitignored local folders.
+<div align="center">
+  <img src="./assets/teaser_v3.png" alt="BRDFusion teaser" width="95%">
+</div>
 
-## Repository Layout
+BRDFusion combines physics-based inverse rendering with generative modeling for high-quality urban scene relighting. It achieves state-of-the-art performance on both real-world Waymo scenes and the synthetic dataset.
+
+
+<a id="news"></a>
+## 📰 News
+
+- Release updates for the project page, paper, datasets, checkpoints, and evaluation results will be posted here.
+
+<a id="todo"></a>
+## 📝 TODO
+
+- [ ] Replace top resource placeholders with real links: Project Page, arXiv, Dataset, Pretrained Checkpoints, and Eval Results.
+- [ ] Replace the clone placeholder `git clone --recursive TBD` with the final repository URL.
+- [ ] Replace download placeholders for preprocessed datasets, pretrained checkpoints, and precomputed videos.
+- [ ] Update [News](#news) with concrete release dates once project resources are public.
+
+
+<a id="what-you-can-do"></a>
+## ✨ What You Can Do
+
+| Workflow | Entry point |
+| --- | --- |
+| Render pretrained checkpoints | `tools/run_pipeline.py --stage render` |
+| Run Gen. Render refinement | `tools/run_pipeline.py --stage gen_render` |
+| Compute metrics | `tools/run_pipeline.py --stage compute_metrics` or precomputed videos |
+| Train BRDFusion | `tools/run_pipeline.py` |
+| Run relighting and scene-edit applications | `scripts/applications/render.sh` |
+
+<a id="table-of-contents"></a>
+## 📋 Table of Contents
+
+- [📰 News](#news)
+- [📝 TODO](#todo)
+- [✨ What You Can Do](#what-you-can-do)
+- [🚀 Quick Start](#quick-start)
+  - [🔦 Prerequisites](#prerequisites)
+  - [⚙️ Installation](#installation)
+  - [📦 Download Data](#download-data)
+  - [🧩 Download Pretrained Checkpoints](#download-pretrained-checkpoints)
+  - [🖼️ Render from a Checkpoint](#render-from-a-checkpoint)
+  - [✨ Gen. Render](#gen-render)
+  - [📊 Metric Computation](#metric-computation)
+  - [🎬 Applications](#applications)
+- [🏋️ Training](#training)
+- [🛣️ Additional Waymo Scenes Processing](#additional-waymo-scenes-processing)
+- [🙏 Acknowledgements](#acknowledgements)
+- [📚 Citation](#citation)
+- [📄 License](#license)
+
+<a id="quick-start"></a>
+## 🚀 Quick Start
+
+We provide preprocessed datasets and pretrained checkpoints for direct inference and evaluation. Training is covered in [Training](#training), with optional Waymo preprocessing notes in [Additional Waymo Scenes Processing](#additional-waymo-scenes-processing).
+
+<a id="prerequisites"></a>
+### 🔦 Prerequisites
+
+The codebase has been tested on:
+
+- **OS**: Ubuntu 22.04
+- **GPU**: NVIDIA RTX A6000
+- **Memory note**: An RTX 4090 can also run some stages when memory usage allows, but the Gen. Render stage can exceed the 24 GB memory limit.
+
+<a id="installation"></a>
+### ⚙️ Installation
+
+BRDFusion uses two environments for inference:
+
+| Environment | Used for |
+| --- | --- |
+| `brdfusion` | checkpoint staging, PBR rendering, applications, and metrics |
+| `cosmos-predict1` | DiffusionRenderer Gen. Render refinement |
+
+Clone the repository:
+
+```bash
+git clone --recursive TBD
+cd BRDFusion
+```
+
+<details>
+<summary>Install the main <code>brdfusion</code> environment</summary>
+
+```bash
+conda create -n brdfusion python=3.11
+conda activate brdfusion
+
+cd third_party/3dgrut
+conda install -y cuda-toolkit cmake ninja -c nvidia/label/cuda-11.8.0
+conda install -y pytorch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 pytorch-cuda=11.8 "numpy<2.0" "mkl=2023.2.0" -c pytorch -c nvidia/label/cuda-11.8.0 -c conda-forge
+CC=gcc-11 CXX=g++-11 pip install --find-links https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-2.1.2_cu118.html kaolin==0.17.0
+conda install -c conda-forge mesa-libgl-devel-cos7-x86_64 -y
+pip install setuptools==71.1.0
+
+git submodule update --init --recursive
+CC=gcc-11 CXX=g++-11 python -m pip install --no-build-isolation -r requirements.txt
+CC=gcc-11 CXX=g++-11 pip install -e .
+
+cd ../../
+CC=gcc-11 CXX=g++-11 pip install --no-build-isolation -r requirements.txt
+CC=gcc-11 CXX=g++-11 python -m pip install --no-build-isolation git+https://github.com/nerfstudio-project/gsplat.git@v1.3.0
+CC=gcc-11 CXX=g++-11 pip install --no-build-isolation git+https://github.com/facebookresearch/pytorch3d.git
+CC=gcc-11 CXX=g++-11 pip install --no-build-isolation git+https://github.com/NVlabs/nvdiffrast
+cd third_party/smplx
+pip install -e .
+cd ../..
+conda deactivate
+```
+
+</details>
+
+<details>
+<summary>Install the DiffusionRenderer <code>cosmos-predict1</code> environment</summary>
+
+```bash
+cd third_party/cosmos1-diffusion-renderer
+conda env create --file cosmos-predict1.yaml
+conda activate cosmos-predict1
+pip install -r requirements.txt
+
+ln -sf $CONDA_PREFIX/lib/python3.10/site-packages/nvidia/*/include/* $CONDA_PREFIX/include/
+ln -sf $CONDA_PREFIX/lib/python3.10/site-packages/nvidia/*/include/* $CONDA_PREFIX/include/python3.10
+pip install transformer-engine[pytorch]==1.12.0
+
+ln -sf $CONDA_PREFIX/lib/python3.10/site-packages/triton/backends/nvidia/include/crt $CONDA_PREFIX/include/
+pip install git+https://github.com/NVlabs/nvdiffrast.git
+```
+For non-Ubuntu platforms, check the [nvdiffrast documentation](https://nvlabs.github.io/nvdiffrast/) and [Dockerfile](https://github.com/NVlabs/nvdiffrast/blob/main/docker/Dockerfile).
+</details>
+
+
+
+Download DiffusionRenderer weights from [Hugging Face](https://huggingface.co/collections/zianw/cosmos-transfer1-diffusionrenderer-6849f2a4da267e55409b8125). Generate a Hugging Face access token, run `huggingface-cli login`, then place the weights under `third_party/cosmos1-diffusion-renderer/checkpoints`:
+
+```bash
+CUDA_HOME=$CONDA_PREFIX PYTHONPATH=$(pwd) \
+  python scripts/download_diffusion_renderer_checkpoints.py --checkpoint_dir checkpoints
+cd ../..
+conda deactivate
+```
+
+Prepare SMPL assets:
+
+1. Download SMPL v1.1 (`SMPL_python_v.1.1.0.zip`) from the [SMPL official website](https://smpl.is.tue.mpg.de/download.php).
+2. Move `SMPL_python_v.1.1.0/smpl/models/basicmodel_neutral_lbs_10_207_0_v1.1.0.pkl` to `smpl_models/SMPL_NEUTRAL.pkl`.
+
+<a id="download-data"></a>
+### 📦 Download Data
+
+We provide preprocessed evaluation data for selected Waymo Open Dataset scenes and all synthetic dataset scenes.
+
+The synthetic dataset includes ground-truth albedo, roughness, metallic, and relighting videos. It also includes shifted paths (`path*-3-calib_*`), which are used for the reported shifted-path metrics.
+
+For synthetic dataset scenes, we collect the 3D assets from [BlenderKit](https://www.blenderkit.com/), and HDRIs from [PolyHaven](https://polyhaven.com/hdris).
+
+Download the preprocessed datasets from [TBD: link] and unzip them under the repository root. The expected top-level layout is:
 
 ```text
-configs/        Method, dataset, stage, asset, and pipeline configs
-datasets/       Dataset loaders and preprocessing helpers
-models/         Gaussian models, renderers, losses, and trainers
-scripts/        Stable shell entrypoints for setup, priors, training, eval
-tools/          Python entrypoints and utility tools
-third_party/    Vendored source for 3DGRT, DiffusionRenderer, DiffusionLight
-docs/           Installation, data, pipeline, evaluation, and application docs
+data/
+  self/
+    path{1..6}_fixed_tree_gamma_full/
+    path{1..6}-3-calib_fixed_tree_gamma_full/
+  waymo/processed/training/{003,019,114,172,703}/
 ```
 
-## Documentation
+For additional Waymo scenes, see [Additional Waymo Scenes Processing](#additional-waymo-scenes-processing).
 
-- [Setup guide](docs/setup.md)
-- [Installation](docs/install.md)
-- [Assets and weights](docs/assets.md)
-- [Dataset layout](docs/dataset_layout.md)
-- [Data and priors](docs/data.md)
-- [Pipeline](docs/pipeline.md)
-- [Evaluation](docs/evaluation.md)
-- [Applications](docs/applications.md)
-- [Troubleshooting](docs/troubleshooting.md)
+<a id="download-pretrained-checkpoints"></a>
+### 🧩 Download Pretrained Checkpoints
 
-## Quick Start
+We provide 1-camera checkpoints trained on frames `0..50` with `test_image_stride=10`. Download the checkpoints from [TBD: link for ckpt] and unzip them under `ckpt/`:
 
-Start with the full [setup guide](docs/setup.md). The condensed sequence is:
+```text
+ckpt/
+  self/path{1..6}_fixed_tree_gamma_full/qwantani_moon_noon_puresky_4k/checkpoint_final.pth
+  waymo/{003,019,114,172,703}/checkpoint_final.pth
+```
 
-1. build the environments from [docs/install.md](docs/install.md)
-2. restore checkpoints using [docs/assets.md](docs/assets.md)
-3. place or symlink datasets using [docs/dataset_layout.md](docs/dataset_layout.md)
-4. validate with smoke checks
-5. dry-run `configs/pipeline/self_repro.yaml`
-
-Restore large assets into the local workspace:
+Stage the downloaded checkpoints into the run-folder layout expected by the rendering tools:
 
 ```bash
-scripts/setup/download_weights.sh cosmos
-DIFFUSIONLIGHT_SOURCE=/path/to/DiffusionLight-Turbo/models \
-  scripts/setup/download_weights.sh diffusionlight
-scripts/setup/check_assets.py --group cosmos
+bash scripts/stage_ckpt.sh
 ```
 
-Create local dataset links without copying large files:
+Staged checkpoints are placed in the run directories used by `tools/run_pipeline.py` and `scripts/applications/render.sh`.
 
-```bash
-BRDFUSION_WAYMO_SOURCE_ROOT=/path/to/waymo/processed/training \
-BRDFUSION_SELF_SOURCE_ROOT=/path/to/self \
-python tools/data/link_datasets.py \
-  --layout configs/data/brdfusion_layout.yaml \
-  --require_source
-```
 
-Inspect and validate the linked layout:
+<a id="render-from-a-checkpoint"></a>
+### 🖼️ Render from a Checkpoint
 
-```bash
-python tools/data/inspect_layout.py \
-  data/brdfusion/waymo/scenes \
-  data/brdfusion/self/scenes
+After staging checkpoints, render through `tools/run_pipeline.py`. The common targets are:
 
-DATASET=self \
-DATA_ROOT=data/brdfusion/self/scenes \
-SCENE=path1_qwantani_moon_noon_puresky_4k \
-CAM_IDS="0 1 2" \
-CHECK_PRIORS=1 \
-scripts/data/check_dataset_layout.sh
-```
+| Dataset | Typical target | Command selector |
+| --- | --- | --- |
+| Waymo | reconstructed lighting | `--dataset waymo --scene_idx <id> --render_target recon` |
+| Synthetic | recon, relight, shifted recon, shifted relight | `--dataset self --path_id <id> --render_target all` |
 
-Dry-run the reproduction pipeline before launching heavy jobs:
+Waymo example:
 
 ```bash
 python tools/run_pipeline.py \
-  --pipeline_config configs/pipeline/self_repro.yaml \
-  --output_dir /tmp/brdfusion_pipeline_manifest
+  --dataset waymo \
+  --cams 1 \
+  --scene_idx 3 \
+  --stage render \
+  --render_target recon
 ```
 
-## Training
+Synthetic dataset example:
 
-Stage configs are merged in this order:
+```bash
+python tools/run_pipeline.py \
+  --dataset self \
+  --cams 1 \
+  --path_id 1 \
+  --stage render \
+  --render_target all \
+  --relight_scene_idx qwantani_moon_noon_puresky_4k_rot90
+```
+
+<details>
+<summary>Render target details</summary>
+
+- `recon`: original path under reconstructed lighting.
+- `relight`: original path under a target environment map.
+- `shifted_recon`: shifted synthetic path under reconstructed lighting.
+- `shifted_relight`: shifted synthetic path under target lighting.
+
+Waymo relighting requires `--relight_envmap_path` because Waymo does not include ground-truth relight scenes. Synthetic relighting defaults to `<scene_idx>_rot90` unless you pass `--relight_scene_idx`.
+
+</details>
+
+<a id="gen-render"></a>
+### ✨ Gen. Render
+
+Gen. Render runs DiffusionRenderer forward refinement on videos produced by the render stage. Use the same dataset, scene/path, camera setting, frame range, and render targets as the render command.
+
+Waymo:
+
+```bash
+python tools/run_pipeline.py \
+  --dataset waymo \
+  --cams 1 \
+  --scene_idx 3 \
+  --stage gen_render \
+  --render_target recon
+```
+
+Synthetic dataset:
+
+```bash
+python tools/run_pipeline.py \
+  --dataset self \
+  --cams 1 \
+  --path_id 1 \
+  --stage gen_render \
+  --render_target all
+```
+
+Gen. Render outputs are written next to the rendered videos for the selected target.
+
+<a id="metric-computation"></a>
+### 📊 Metric Computation
+
+Metric computation assumes Gen. Render has completed for the selected targets. Waymo computes NVS image metrics. Synthetic dataset scenes compute NVS, relighting, and intrinsic metrics on both original and shifted paths.
+
+Waymo:
+
+```bash
+python tools/run_pipeline.py \
+  --dataset waymo \
+  --cams 1 \
+  --scene_idx 3 \
+  --stage compute_metrics \
+  --render_target recon
+```
+
+Synthetic dataset:
+
+```bash
+python tools/run_pipeline.py \
+  --dataset self \
+  --cams 1 \
+  --path_id 1 \
+  --stage compute_metrics \
+  --render_target all
+```
+
+Render outputs are written under `render/<target>/`, and metric JSONs are written under matching `metrics/<target>/` folders.
+
+<a id="evaluate-precomputed-videos"></a>
+#### Evaluate Precomputed Videos
+
+For direct comparison with BRDFusion and baselines such as UrbanIR, InvRGB+L, and Gen3C+DR, download the precomputed videos from [TBD: link to precomputed videos] and unzip them under `videos/`:
 
 ```text
-base config -> dataset config -> stage overlays -> CLI opts
+videos/
+  brdfusion/{self,waymo}/...
+  gen3c_dr/{self,waymo}/...
+  invrgbl/{self,waymo}/...
+  urbanir/{self,waymo}/...
 ```
 
-Example stage-1 raster/material run:
+Compute metrics on the downloaded videos with:
 
 ```bash
-python tools/train.py \
-  --config_file configs/omnire.yaml \
-  --config_overlay configs/stage/stage1_raster.yaml \
-  --output_root work_dirs \
-  --project brdfusion \
-  --run_name stage1a \
-  dataset=self/brdfusion_3cams \
-  data.scene_idx=path1_qwantani_moon_noon_puresky_4k \
-  data.data_root=data/brdfusion/self/scenes
+conda run -n brdfusion --no-capture-output \
+  python -u tools/metrics/compute_precomputed_video_metrics.py --root ./videos/
 ```
 
-The standard BRDFusion schedule is:
+<a id="applications"></a>
+### 🎬 Applications
 
-1. Stage 1-1: rasterized 3DGS geometry/material optimization
-2. DiffusionRenderer generative refinement of G-buffer priors
-3. Stage 1-2: rasterized optimization with refined priors
-4. Stage 2: freeze geometry/material and optimize light with PBR rendering
-5. Stage 3: low-LR joint fine-tuning with all losses
+The application renderer applies relighting, camera-path changes, local lights, headlights, and dynamic object edits at evaluation time without changing the checkpoint.
 
-## Smoke Checks
+| Application | What to set | Notes |
+| --- | --- | --- |
+| Relighting | `NEW_ENVMAP`, `NEW_ENVMAP_RES` | Replace the environment map at render time. |
+| Camera path changes | `START`, `END`, `CAMERA_INTERP_STEPS`, or `TIMESTEP` with `SPIRAL_*` | Render timestep ranges, interpolated paths, or spiral camera paths. |
+| Local lights | `LOCAL_LIGHT_CONFIG` or `POINT_LIGHTS_FILE` | Add point lights or imported scene lights. |
+| Headlights | `HEADLIGHTS=1` and headlight offset/intensity settings | Add camera-relative lights for driving scenarios. |
+| Dynamic object edits | `INSERT_*`, `MOVE_*`, `DELETE_*`, or JSON specs | Insert, move, scale, rotate, or remove dynamic objects. |
+| Debug renders | `NO_PBR=1`, `PRINT_CMD=1` | Check geometry, camera paths, and generated commands. |
 
-Run these after editing configs, scripts, or docs:
+<details>
+<summary>Application examples</summary>
+
+Use the same entrypoint for all application renders:
 
 ```bash
-scripts/smoke/check_scripts.sh
-scripts/smoke/check_configs.sh
-scripts/smoke/check_self_contained_paths.sh
-scripts/smoke/check_third_party_layout.sh
-scripts/smoke/check_repo_hygiene.sh
-PYTHON_BIN=/path/to/python scripts/smoke/check_imports.sh
+CKPT=/path/to/checkpoint_final.pth \
+scripts/applications/render.sh
 ```
 
-## Attribution
+Relight with a new HDRI:
 
-BRDFusion builds on DriveStudio/OmniRe and incorporates 3DGRT,
-DiffusionRenderer, and DiffusionLight-Turbo as vendored source dependencies.
-Please cite the corresponding projects when using this codebase.
+```bash
+CKPT=/path/to/checkpoint_final.pth \
+NEW_ENVMAP=/path/to/target_envmap.hdr \
+NEW_ENVMAP_RES=1024 \
+scripts/applications/render.sh
+```
+
+Render a timestep range with interpolated cameras:
+
+```bash
+CKPT=/path/to/checkpoint_final.pth \
+START=10 END=30 \
+CAM_IDS=0 \
+CAMERA_INTERP_STEPS=2 \
+scripts/applications/render.sh
+```
+
+Render a spiral camera path around one timestep:
+
+```bash
+CKPT=/path/to/checkpoint_final.pth \
+TIMESTEP=20 CAM_ID=0 \
+SPIRAL_FRAMES=120 \
+SPIRAL_LOOPS=1 \
+SPIRAL_RADIUS_M=1.0 \
+SPIRAL_VERTICAL_AMPLITUDE_M=0.3 \
+SPIRAL_TARGET_DISTANCE_M=10.0 \
+scripts/applications/render.sh
+```
+
+Add local lights from a JSON config overlay:
+
+```bash
+CKPT=/path/to/checkpoint_final.pth \
+NEW_ENVMAP=/project2/yi-ray/BRDFusion/assets/HDRI/NightSkyHDRI001_8K_HDR.exr \
+NEW_ENVMAP_RES=4096 \
+LOCAL_LIGHT_CONFIG=configs/application/local_light_example.json \
+POINT_LIGHTS_USE_ENVMAP=1 \
+RENDER_POINT_LIGHT_EMITTERS=1 \
+scripts/applications/render.sh
+```
+
+Add local lights from a point-light file:
+
+```bash
+CKPT=/path/to/checkpoint_final.pth \
+NEW_ENVMAP=/project2/yi-ray/BRDFusion/assets/HDRI/NightSkyHDRI001_8K_HDR.exr \
+NEW_ENVMAP_RES=4096 \
+POINT_LIGHTS_FILE=assets/blender_light_pos.txt \
+POINT_LIGHTS_FILE_FORMAT=blender_area_txt \
+POINT_LIGHTS_FILE_ENERGY_SCALE=1.0 \
+RENDER_POINT_LIGHT_EMITTERS=1 \
+scripts/applications/render.sh
+```
+
+`assets/blender_light_pos.txt` records the light positions from the synthetic dataset scene and can be used directly as `POINT_LIGHTS_FILE`.
+
+Add camera-relative headlights:
+
+```bash
+CKPT=/path/to/checkpoint_final.pth \
+NEW_ENVMAP=/project2/yi-ray/BRDFusion/assets/HDRI/NightSkyHDRI001_8K_HDR.exr \
+NEW_ENVMAP_RES=4096 \
+HEADLIGHTS=1 \
+HEADLIGHT_INTENSITY=150 \
+HEADLIGHT_LATERAL_OFFSET=0.8 \
+HEADLIGHT_DOWN_OFFSET=0.3 \
+HEADLIGHT_FORWARD_OFFSET=1.5 \
+HEADLIGHT_AS_SPOTLIGHT=1 \
+HEADLIGHT_INNER_ANGLE_DEG=15 \
+HEADLIGHT_OUTER_ANGLE_DEG=35 \
+EMIT_HEADLIGHTS=1 \
+scripts/applications/render.sh
+```
+
+Export dynamic assets from a checkpoint:
+
+```bash
+SOURCE_CKPT=/path/to/source/checkpoint_final.pth \
+OUTPUT_PATH=/path/to/exported_assets \
+EXPORT_MODE=per_object \
+scripts/assets/export_dynamic_assets.sh
+```
+
+Per-object export writes asset packages, preview images, and a `manifest.json`, so exported assets can be visualized and chosen before insertion.
+
+Insert one exported dynamic object. The insertion is anchored at `INSERT_ANCHOR_TIMESTEP` and `INSERT_ANCHOR_CAM_ID`; `INSERT_FORWARD_M`, `INSERT_RIGHT_M`, and `INSERT_UP_M` place the object in that camera's local frame, while `INSERT_YAW_DEG` and `INSERT_SCALE` adjust its pose and size.
+
+```bash
+CKPT=/path/to/checkpoint_final.pth \
+INSERT_ASSET=/path/to/exported_object.pth \
+INSERT_ANCHOR_TIMESTEP=30 \
+INSERT_ANCHOR_CAM_ID=0 \
+INSERT_FORWARD_M=10.0 \
+INSERT_RIGHT_M=-2.0 \
+INSERT_UP_M=0.0 \
+INSERT_YAW_DEG=0 \
+INSERT_SCALE=1.0 \
+scripts/applications/render.sh
+```
+
+Insert multiple objects from a JSON spec:
+
+```bash
+CKPT=/path/to/checkpoint_final.pth \
+INSERT_SPEC=configs/application/scene_edit_example.json \
+scripts/applications/render.sh
+```
+
+Move multiple objects from a JSON spec:
+
+```bash
+CKPT=/path/to/checkpoint_final.pth \
+MOVE_SPEC=configs/application/object_move_example.json \
+scripts/applications/render.sh
+```
+
+Move one dynamic object relative to the ego camera:
+
+```bash
+CKPT=/path/to/checkpoint_final.pth \
+MOVE_RIGID_IDS=0 \
+MOVE_ANCHOR_TIMESTEP=30 \
+MOVE_FORWARD_M=0.0 \
+MOVE_RIGHT_M=2.0 \
+MOVE_UP_M=0.0 \
+MOVE_YAW_DEG=15 \
+MOVE_SCALE=1.0 \
+scripts/applications/render.sh
+```
+
+Remove dynamic objects:
+
+```bash
+CKPT=/path/to/checkpoint_final.pth \
+DELETE_RIGID_IDS=3,5 \
+DELETE_SMPL_IDS=0 \
+scripts/applications/render.sh
+```
+
+Disable PBR for geometry or camera-path checks:
+
+```bash
+CKPT=/path/to/checkpoint_final.pth \
+NO_PBR=1 \
+PRINT_CMD=1 \
+scripts/applications/render.sh
+```
+
+Scene-edit examples are provided under `configs/application/`. To run Gen. Render on an application render, use:
+
+```bash
+VIDEO_ROOT=/path/to/application/videos \
+STRENGTHS=0.5 \
+scripts/render/gen_render_video_folder.sh
+```
+
+Application renders are written under the render folder associated with the checkpoint unless `VIDEO_OUTPUT_DIR` is set.
+
+</details>
+
+<a id="training"></a>
+## 🏋️ Training
+
+Training can be run on the provided synthetic dataset or on prepared Waymo scenes. The same driver handles training, rendering, Gen. Render, and metric computation.
+
+<a id="run-the-staged-pipeline"></a>
+### 🔁 Run the Staged Pipeline
+
+Use `tools/run_pipeline.py` as the main entrypoint. By default, it runs the full training pipeline; `--stage` lets you run only one part of the workflow.
+
+The released checkpoints use frames `0..50` with `test_image_stride=10`, and the examples below follow the same setting.
+
+The pipeline has four user-facing stages:
+
+| Stage | What it runs |
+| --- | --- |
+| `train` | staged reconstruction and light/material optimization |
+| `render` | PBR rendering with reconstructed or target lighting |
+| `gen_render` | DiffusionRenderer forward refinement of rendered videos |
+| `compute_metrics` | image, intrinsic, and relighting metrics when GT exists |
+
+Train on the provided synthetic dataset:
+
+```bash
+python tools/run_pipeline.py \
+  --dataset self \
+  --cams 1 \
+  --path_id 1 \
+  --start_timestep 0 \
+  --end_timestep 50 \
+  --test_image_stride 10
+```
+
+Train on a prepared Waymo scene:
+
+```bash
+python tools/run_pipeline.py \
+  --dataset waymo \
+  --cams 1 \
+  --scene_idx 3 \
+  --start_timestep 0 \
+  --end_timestep 50 \
+  --test_image_stride 10
+```
+
+Use `--cams 3` for the 3-camera setting. Add `--dry_run` to print the selected commands and write `pipeline_manifest.json` without launching heavy jobs.
+
+Run a single stage when moving expensive work between machines:
+
+```bash
+python tools/run_pipeline.py \
+  --dataset self \
+  --cams 1 \
+  --path_id 1 \
+  --start_timestep 0 \
+  --end_timestep 50 \
+  --test_image_stride 10 \
+  --stage gen_render
+```
+
+When executing, stages whose completion outputs already exist are skipped by default. For example, if `stage1a/checkpoint_final.pth` exists, `--stage train` continues from Gen. Refine. Add `--rerun_existing` to force recomputation.
+
+<a id="additional-waymo-scenes-processing"></a>
+## 🛣️ Additional Waymo Scenes Processing
+
+Processing additional Waymo scenes is optional. Use this section when you want to train or evaluate BRDFusion on scenes beyond the provided preprocessed Waymo data.
+
+<details>
+<summary>Process an additional Waymo scene</summary>
+
+<a id="data-layout"></a>
+### 🗂️ Data Layout
+
+Waymo scenes use the original DriveStudio processed format. Place each scene under `data/waymo/processed/training/` using a three-digit scene id:
+
+```text
+data/waymo/processed/training/
+  003/
+    images/
+    lidar/
+    ego_pose/
+    extrinsics/
+    intrinsics/
+    sky_masks/
+    dynamic_masks/
+```
+
+Prepare new Waymo scenes with the original DriveStudio instructions in [docs/Waymo.md](docs/Waymo.md). The commands below accept either padded or unpadded ids; for example, `SCENE=3` resolves to scene `003`.
+
+<a id="prepare-priors"></a>
+### 💡 Prepare Priors
+
+Before training a new Waymo scene, generate DiffusionRenderer G-buffer priors and DiffusionLight HDR lighting priors.
+
+Set `CAM_IDS` to the cameras you want to process and `NUM_TIMESTEPS` to the number of frames. Use `CAM_IDS="0 1 2"` for all three cameras.
+
+Generate DiffusionRenderer priors:
+
+```bash
+DATA_ROOT=data/waymo/processed/training \
+SCENE=3 \
+CAM_IDS="0" \
+NUM_TIMESTEPS=51 \
+scripts/priors/run_dr_waymo.sh
+```
+
+Install the DiffusionLight environment once before generating HDR priors:
+
+```bash
+conda env create -f environment.yml
+conda activate diffusionlight-turbo
+pip install -r requirements.txt
+huggingface-cli login
+```
+
+Generate DiffusionLight predictions, then merge them into one HDR environment-map prior per frame:
+
+```bash
+DATA_ROOT=data/waymo/processed/training \
+SCENE=3 \
+INTERVAL=2 \
+CAM_IDS="0" \
+NUM_TIMESTEPS=51 \
+scripts/priors/run_dl_waymo.sh
+
+DATA_ROOT=data/waymo/processed/training \
+SCENE=3 \
+INTERVAL=2 \
+CAM_IDS="0" \
+NUM_TIMESTEPS=51 \
+scripts/priors/merge_dl_waymo.sh
+```
+
+Merged light priors are written to `dlenvmap/*_envmap_median.exr` inside the scene folder.
+
+</details>
+
+<a id="acknowledgements"></a>
+## 🙏 Acknowledgements
+
+This project builds on [DriveStudio](https://github.com/ziyc/drivestudio), [DiffusionRenderer](https://github.com/nv-tlabs/cosmos-transfer1-diffusion-renderer), and [DiffusionLight-Turbo](https://github.com/DiffusionLight/DiffusionLight-Turbo). We thank the authors of these projects for releasing their code and resources.
+
+<a id="citation"></a>
+## 📚 Citation
+
+If you find BRDFusion useful for your research, please consider citing:
+
+```bibtex
+@misc{liu2026brdfusion,
+  title={BRDFusion: Physics Meets Generation for Urban Scene Inverse Rendering},
+  author={Liu, Yi-Ruei and Lee, Jie-Ying and Huang, Zheng-Hui and Liu, Yu-Lun and Lin, Chih-Hao},
+  year={2026}
+}
+```
+
+<a id="license"></a>
+## 📄 License
+
+This repository is released under the license in [LICENSE](LICENSE). Third-party
+components under `third_party/` are governed by their respective licenses.

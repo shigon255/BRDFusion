@@ -1,9 +1,9 @@
 data:
-  data_root: data/brdfusion/self/scenes
+  data_root: data/self/path1_fixed_tree_gamma_full
   dataset: self
-  scene_idx: path1_qwantani_moon_noon_puresky_4k
+  scene_idx: qwantani_moon_noon_puresky_4k
   start_timestep: 0
-  end_timestep: -1
+  end_timestep: 50
   preload_device: cuda
   pixel_source:
     type: datasets.self.self_sourceloader.SelfPixelSource
@@ -11,7 +11,7 @@ data:
     downscale_when_loading: [2, 2, 2]
     downscale: 1
     undistort: False
-    test_image_stride: 0
+    test_image_stride: 10
     load_sky_mask: True
     load_gt_sky_mask: False
     gt_sky_mask_dir: gt_sky_mask
@@ -28,7 +28,7 @@ data:
     load_materials: True
     load_gt_intrinsic: False
     load_relighted_rgb: False
-    relighted_scene_idx: null
+    relighted_scene_idx: qwantani_moon_noon_puresky_4k_rot90
     gt_intrinsic_dirs:
       normal: normal
       albedo: albedo
@@ -43,11 +43,17 @@ data:
     gt_depth_dir: depth
     gt_depth_ext: exr
     prior_type: dr
+    prior_dirs:
+      normal: null
+      mono_depth: null
+      albedo: null
+      roughness: null
+      metallic: null
     external_source:
       enable: False
-      data_root: null
-      scene_idx: null
-      relighted_scene_idx: null
+      data_root: data/self/path1-3-calib_fixed_tree_gamma_full
+      scene_idx: qwantani_moon_noon_puresky_4k
+      relighted_scene_idx: qwantani_moon_noon_puresky_4k_rot90
       active_source: primary
     sampler:
       buffer_downscale: 8

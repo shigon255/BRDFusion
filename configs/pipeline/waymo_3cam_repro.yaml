@@ -1,0 +1,46 @@
+# BRDFusion Waymo 3-camera reproduction pipeline, synced with run_exp_full_waymo.sh.
+repo_root: .
+output_root: work_dirs
+config_file: configs/omnire.yaml
+# Static preset only. Dataset/path/scene/timestep values are derived by tools/run_pipeline.py CLI.
+
+stage1a_iters: 30000
+stage1b_iters: 30000
+stage2_iters: 5000
+stage3_iters: 20000
+
+scaleinv_w: 0.1
+scaleinv_w_final: 0.01
+
+gen_refine_strengths: "0.3"
+gen_render_strengths: "0.5"
+
+stage3_extra_opts:
+  - trainer.losses.pbr_rgb.w=0.1
+  - trainer.losses.env_scaleinv.w=0.01
+  - trainer.gaussian_ctrl_general_cfg.opacity.lr_final=0.0005
+  - trainer.gaussian_ctrl_general_cfg.scaling.lr_final=0.0005
+  - trainer.gaussian_ctrl_general_cfg.rotation.lr_final=0.0005
+  - trainer.gaussian_ctrl_general_cfg.normal.lr_final=0.0001
+  - trainer.gaussian_ctrl_general_cfg.albedo.lr_final=0.0001
+  - trainer.gaussian_ctrl_general_cfg.roughness.lr_final=0.0001
+  - trainer.gaussian_ctrl_general_cfg.metallic.lr_final=0.0001
+  - model.Sky.optim.all.lr=0.00001
+
+diffusion_renderer_root: third_party/cosmos1-diffusion-renderer
+
+render_targets:
+  recon:
+    enabled: true
+  relight:
+    enabled: false
+  shifted_recon:
+    enabled: false
+  shifted_relight:
+    enabled: false
+
+stages:
+  - train
+  - render
+  - gen_render
+  - compute_metrics

@@ -1,0 +1,5 @@
+# scene_id, seg_name, start_timestep, end_timestep
+245,seg153495,0,-1
+527,seg401782,0,-1
+496,seg342571,0,-1
+157,seg134763,0,-1

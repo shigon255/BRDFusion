@@ -1,12 +1,15 @@
 import os
 import argparse
+import fnmatch
 from PIL import Image
 from tqdm import tqdm
 
-def resize_images_in_place(input_folder, width, height):
+def resize_images_in_place(input_folder, width, height, pattern=None):
     valid_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp')
 
     for filename in tqdm(os.listdir(input_folder)):
+        if pattern and not fnmatch.fnmatch(filename, pattern):
+            continue
         if filename.lower().endswith(valid_extensions):
             image_path = os.path.join(input_folder, filename)
 
@@ -23,9 +26,10 @@ def main():
     parser.add_argument("folder", type=str, help="Path to the folder with images to resize.")
     parser.add_argument("width", type=int, help="Target width for resizing.")
     parser.add_argument("height", type=int, help="Target height for resizing.")
+    parser.add_argument("--pattern", default=None, help="Optional fnmatch pattern for filenames to resize, e.g. '*_0.jpg'.")
     args = parser.parse_args()
 
-    resize_images_in_place(args.folder, args.width, args.height)
+    resize_images_in_place(args.folder, args.width, args.height, args.pattern)
 
 if __name__ == "__main__":
     main()

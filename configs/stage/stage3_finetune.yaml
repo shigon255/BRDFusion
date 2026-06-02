@@ -6,22 +6,10 @@ trainer:
     freeze_geometry: false
     freeze_material: false
     freeze_envmap: false
-  gaussian_optim_general_cfg:
-    xyz:
-      lr: 8.0e-05
-      lr_final: 8.0e-07
-    normal:
-      lr: 5.0e-04
-    albedo:
-      lr: 5.0e-04
-    roughness:
-      lr: 5.0e-04
-    metallic:
-      lr: 5.0e-04
   losses:
     rgb:
-      w: 0.4
+      w: 0.8
     ssim:
-      w: 0.1
+      w: 0.2
     pbr_rgb:
       w: 0.5

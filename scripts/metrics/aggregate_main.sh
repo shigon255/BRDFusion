@@ -2,6 +2,12 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+export CC="${CC:-gcc-11}"
+export CXX="${CXX:-g++-11}"
+if [[ "${BRDFUSION_SKIP_CONDA_RUN:-0}" != "1" && -z "${BRDFUSION_IN_CONDA_RUN:-}" && -z "${PYTHON_BIN+x}" ]]; then
+  SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+  exec python3 "${REPO_ROOT}/tools/env_config.py" --operation metric_compute --exec "${SCRIPT_PATH}" "$@"
+fi
 cd "${REPO_ROOT}"
 export PYTHONPATH="${PYTHONPATH:-${REPO_ROOT}}"
 

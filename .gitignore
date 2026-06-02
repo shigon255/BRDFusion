@@ -68,13 +68,15 @@ checkpoint*.pth
 *.onnx
 
 # Datasets and generated priors
-/data/
+/data/self/
+/data/waymo/
 /assets/checkpoints/
 /priors/
 /smpl_models/
 /dlenvmap*/
 /dense_envmap_bckp/
 /old_envmap/
+/precomputed_videos/
 
 # Allow lightweight placeholders in local asset roots.
 !assets/
@@ -106,6 +108,7 @@ third_party/**/build.ninja
 third_party/**/.ninja_deps
 third_party/**/.ninja_log
 third_party/**/checkpoints/
+third_party/**/checkpoints
 third_party/**/runs/
 third_party/**/outputs/
 third_party/**/output/
@@ -126,6 +129,8 @@ third_party/3dgrut/thirdparty/tiny-cuda-nn/dependencies/cutlass/docs/
 third_party/cosmos1-diffusion-renderer/asset/
 third_party/cosmos1-diffusion-renderer/tmp/
 third_party/cosmos1-diffusion-renderer/tmp_run/
+third_party/DiffusionLight-Turbo/inputs/
+third_party/DiffusionLight-Turbo/input*/
 third_party/DiffusionLight-Turbo/test_image_full/
 third_party/DiffusionLight-Turbo/test_image_crop/
 third_party/DiffusionLight-Turbo/test_image_full_output/
@@ -151,7 +156,7 @@ third_party/smplx/data/
 /pcd_render/
 
 # Generated media/artifacts. Images are intentionally not ignored globally:
-# documentation and vendored source trees may contain small tracked images.
+# vendored source trees may contain small tracked images.
 *.mp4
 *.mov
 *.avi
@@ -159,7 +164,3 @@ third_party/smplx/data/
 *.ply
 *.glb
 *.jsonl
-
-# Allow documentation media.
-!docs/media/
-!docs/media/**

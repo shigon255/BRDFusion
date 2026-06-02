@@ -1,5 +1,5 @@
 seed: 0
-dataset: waymo/3cams
+dataset: waymo/1cams
 
 # ------------- Trainer ------------ #
 trainer:
@@ -38,6 +38,7 @@ trainer:
     point_lights_use_envmap: true # whether point_lights mode also renders envmap direct lighting
     point_light_intensity_mode: radiant_intensity # radiant_intensity (I/r^2) or irradiance_like
     point_light_falloff_exponent: 2.0 # exponent n in I / r^n when intensity_mode=radiant_intensity
+    point_light_min_distance: 0.0 # optional lower bound on point-light distance for inverse-square falloff
     render_point_light_emitters: false # eval-only: render tiny visible emitters at point-light positions
     emit_for_eval_headlight: false # eval-only: whether camera-relative headlights should render visible emitters
     eval_headlight_as_spotlight: false # eval-only: if true, camera headlights use spotlight attenuation instead of omni point light

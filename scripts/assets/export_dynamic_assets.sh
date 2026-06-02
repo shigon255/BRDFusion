@@ -17,6 +17,8 @@ set -euo pipefail
 #   PREVIEW_ANCHOR_TIMESTEP=0
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+export CC="${CC:-gcc-11}"
+export CXX="${CXX:-g++-11}"
 
 SOURCE_CKPT="${SOURCE_CKPT:-${1:-}}"
 OUTPUT_PATH="${OUTPUT_PATH:-${2:-}}"

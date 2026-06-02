@@ -22,13 +22,14 @@ opencv-python
 plyfile
 polyscope>=2.3.0
 open3d
+pyexr
 splines
 pyquaternion
-kornia
+kornia==0.7.4
 einops
 msgpack
 dataclasses_json
-setuptools <72.1.0
+# setuptools==71.1.0
 # --find-links https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-2.1.2_cu118.html
 # kaolin==0.17.0
 

@@ -702,7 +702,7 @@ class BasicTrainer(nn.Module):
                     packed=self.render_cfg.packed,
                     absgrad=self.render_cfg.absgrad,
                     sparse_grad=self.render_cfg.sparse_grad,
-                    distloss=True,
+                    distloss=True, 
                     **kwargs,
                 )
                 info["2dgs_rendered_normal"] = rendered_normal.squeeze(0)
@@ -723,7 +723,7 @@ class BasicTrainer(nn.Module):
                     absgrad=self.render_cfg.absgrad,
                     sparse_grad=self.render_cfg.sparse_grad,
                     rasterize_mode="antialiased" if self.render_cfg.antialiased else "classic",
-                    distloss=True,
+                    # distloss=True, # this only supported by modified version of gsplat. We don't use it.
                     **kwargs,
                 )
                 

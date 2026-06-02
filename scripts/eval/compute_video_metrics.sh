@@ -2,6 +2,8 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+export CC="${CC:-gcc-11}"
+export CXX="${CXX:-g++-11}"
 cd "${REPO_ROOT}"
 export PYTHONPATH="${PYTHONPATH:-${REPO_ROOT}}"
 
@@ -71,6 +73,15 @@ if [[ -n "${CAM_IDS:-}" ]]; then
   # shellcheck disable=SC2206
   cams=( ${CAM_IDS} )
   cmd+=(--cam_ids "${cams[@]}")
+fi
+if [[ -n "${RELIGHT_SCENE_IDX:-}" ]]; then
+  cmd+=(data.pixel_source.load_relighted_rgb=true data.pixel_source.relighted_scene_idx="${RELIGHT_SCENE_IDX}")
+fi
+if [[ -n "${EXTERNAL_DATA_ROOT:-}" || -n "${EXTERNAL_SCENE_IDX:-}" || -n "${EXTERNAL_RELIGHT_SCENE_IDX:-}" ]]; then
+  cmd+=(data.pixel_source.external_source.enable=true)
+  [[ -n "${EXTERNAL_DATA_ROOT:-}" ]] && cmd+=(data.pixel_source.external_source.data_root="${EXTERNAL_DATA_ROOT}")
+  [[ -n "${EXTERNAL_SCENE_IDX:-}" ]] && cmd+=(data.pixel_source.external_source.scene_idx="${EXTERNAL_SCENE_IDX}")
+  [[ -n "${EXTERNAL_RELIGHT_SCENE_IDX:-}" ]] && cmd+=(data.pixel_source.external_source.relighted_scene_idx="${EXTERNAL_RELIGHT_SCENE_IDX}")
 fi
 
 if [[ -n "${EXTRA_OPTS:-}" ]]; then
