@@ -1,4 +1,4 @@
-name: diffusionlight-turbo
+name: diffusionlight
 channels:
   - conda-forge
   - defaults

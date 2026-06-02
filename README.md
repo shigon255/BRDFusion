@@ -186,6 +186,90 @@ data/
   waymo/processed/training/{003,019,114,172,703}/
 ```
 
+<details>
+<summary>Detailed dataset layout</summary>
+
+Frame files use the `<frame>_<camera>` naming convention, for example `000_0.png` for synthetic images and `000_0.jpg` for Waymo images and DiffusionRenderer priors.
+
+Synthetic original paths contain RGB frames, camera calibration, ground-truth intrinsics, DiffusionRenderer priors, and DiffusionLight lighting priors:
+
+```text
+data/self/path1_fixed_tree_gamma_full/qwantani_moon_noon_puresky_4k/
+  Camera_Center_poses.txt
+  Cam_Left_poses.txt
+  Cam_Right_poses.txt
+  images/
+  intrinsics/
+  sky_masks/
+  gt_sky_mask/
+  depth/
+  normal/
+  albedo/
+  roughness/
+  metallic/
+  diffusion_renderer_depth/
+  diffusion_renderer_normal/
+  diffusion_renderer_albedo/
+  diffusion_renderer_roughness/
+  diffusion_renderer_metallic/
+  dlenvmap/
+  qwantani_moon_noon_puresky_4k.exr
+```
+
+Synthetic relighting scenes provide target RGB frames and the target environment map:
+
+```text
+data/self/path1_fixed_tree_gamma_full/qwantani_moon_noon_puresky_4k_rot90/
+  Camera_Center_poses.txt
+  Cam_Left_poses.txt
+  Cam_Right_poses.txt
+  images/
+  intrinsics/
+  qwantani_moon_noon_puresky_4k_rot90.exr
+  qwantani_moon_noon_puresky_4k_rot90.hdr
+```
+
+Shifted-path synthetic scenes are used for the reported shifted-path metrics:
+
+```text
+data/self/path1-3-calib_fixed_tree_gamma_full/qwantani_moon_noon_puresky_4k/
+  Camera_Center_poses.txt
+  Cam_Left_poses.txt
+  Cam_Right_poses.txt
+  images/
+  intrinsics/
+  gt_sky_mask/
+  depth/
+  normal/
+  albedo/
+  roughness/
+  metallic/
+  colmap_1cam/
+  qwantani_moon_noon_puresky_4k.exr
+```
+
+Waymo scenes contain pre-processed data plus the priors needed by BRDFusion training:
+
+```text
+data/waymo/processed/training/003/
+  images/
+  lidar/
+  ego_pose/
+  extrinsics/
+  intrinsics/
+  sky_masks/
+  dynamic_masks/
+  instances/
+  diffusion_renderer_depth/
+  diffusion_renderer_normal/
+  diffusion_renderer_albedo/
+  diffusion_renderer_roughness/
+  diffusion_renderer_metallic/
+  dlenvmap/
+```
+
+</details>
+
 For additional Waymo scenes, see [Additional Waymo Scenes Processing](#additional-waymo-scenes-processing).
 
 <a id="download-pretrained-checkpoints"></a>
@@ -387,11 +471,13 @@ SPIRAL_TARGET_DISTANCE_M=10.0 \
 scripts/applications/render.sh
 ```
 
+We recommend using a night environment HDRI when enabling local lights. Please download the night HDRI [here](https://ambientcg.com/view?id=NightSkyHDRI001) from [ambientCG](https://ambientcg.com/).
+
 Add local lights from a JSON config overlay:
 
 ```bash
 CKPT=/path/to/checkpoint_final.pth \
-NEW_ENVMAP=/project2/yi-ray/BRDFusion/assets/HDRI/NightSkyHDRI001_8K_HDR.exr \
+NEW_ENVMAP=/path/to/NightSkyHDRI001_8K_HDR.exr \
 NEW_ENVMAP_RES=4096 \
 LOCAL_LIGHT_CONFIG=configs/application/local_light_example.json \
 POINT_LIGHTS_USE_ENVMAP=1 \
@@ -403,7 +489,7 @@ Add local lights from a point-light file:
 
 ```bash
 CKPT=/path/to/checkpoint_final.pth \
-NEW_ENVMAP=/project2/yi-ray/BRDFusion/assets/HDRI/NightSkyHDRI001_8K_HDR.exr \
+NEW_ENVMAP=/path/to/NightSkyHDRI001_8K_HDR.exr \
 NEW_ENVMAP_RES=4096 \
 POINT_LIGHTS_FILE=assets/blender_light_pos.txt \
 POINT_LIGHTS_FILE_FORMAT=blender_area_txt \
@@ -418,7 +504,7 @@ Add camera-relative headlights:
 
 ```bash
 CKPT=/path/to/checkpoint_final.pth \
-NEW_ENVMAP=/project2/yi-ray/BRDFusion/assets/HDRI/NightSkyHDRI001_8K_HDR.exr \
+NEW_ENVMAP=/path/to/NightSkyHDRI001_8K_HDR.exr \
 NEW_ENVMAP_RES=4096 \
 HEADLIGHTS=1 \
 HEADLIGHT_INTENSITY=150 \
@@ -621,13 +707,14 @@ NUM_TIMESTEPS=51 \
 scripts/priors/run_dr_waymo.sh
 ```
 
-Install the DiffusionLight environment once before generating HDR priors:
+Install the DiffusionLight environment once before generating HDR priors. Make sure you login to the huggingface.
 
 ```bash
+cd third_party/DiffusionLight-Turbo
 conda env create -f environment.yml
-conda activate diffusionlight-turbo
+conda activate diffusionlight
 pip install -r requirements.txt
-huggingface-cli login
+cd ../../
 ```
 
 Generate DiffusionLight predictions, then merge them into one HDR environment-map prior per frame:
