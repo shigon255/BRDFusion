@@ -126,7 +126,7 @@ conda deactivate
 </details>
 
 <details>
-<summary>Install the DiffusionRenderer and download the weights <code>cosmos-predict1</code> environment</summary>
+<summary>Install the DiffusionRenderer <code>cosmos-predict1</code> environment and download the weights </summary>
 
 ```bash
 cd third_party/cosmos1-diffusion-renderer
