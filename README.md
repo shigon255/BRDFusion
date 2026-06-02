@@ -165,7 +165,7 @@ Prepare SMPL assets:
 
 We provide preprocessed evaluation data for selected Waymo Open Dataset scenes and all synthetic dataset scenes.
 
-The synthetic release includes ground-truth albedo, roughness, metallic, relighting videos, and shifted paths (`path*-3-calib_*`) used for the reported shifted-path metrics. The synthetic 3D assets come from [BlenderKit](https://www.blenderkit.com/), and the HDRIs come from [PolyHaven](https://polyhaven.com/hdris).
+The synthetic dataset capture the urban scene in Blender using 3 cameras. We render 6 paths in the scene. Each path includes 100 ground-truth RGB, material, and relighting RGB frames. For each path we render a shifted version (`path*-3-calib_*`) of it used for the reported NVS, inverse rendering, and NVS-relight metrics. Note that we use 1 camera and the first 51 frames for evaluation. The synthetic 3D assets come from [BlenderKit](https://www.blenderkit.com/), and the HDRIs come from [PolyHaven](https://polyhaven.com/hdris).
 
 Download the preprocessed datasets from [TBD: link], unzip them under the repository root, and keep this top-level layout:
 
@@ -285,7 +285,7 @@ The staging script places checkpoints under the corresponding `work_dirs/` run d
 <a id="render-from-a-checkpoint"></a>
 ### 🖼️ Render from a Checkpoint
 
-After staging checkpoints, render through `tools/run_pipeline.py`. The common targets are:
+After staging checkpoints, PBR-render through `tools/run_pipeline.py`. The common targets are:
 
 | Dataset | Typical target | Command selector |
 | --- | --- | --- |
