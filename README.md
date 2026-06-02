@@ -22,7 +22,7 @@
   <img src="./assets/teaser_v3.png" alt="BRDFusion teaser" width="95%">
 </div>
 
-BRDFusion combines physics-based inverse rendering with generative modeling for high-quality urban scene relighting. It achieves state-of-the-art performance on both real-world Waymo scenes and the synthetic dataset.
+BRDFusion combines physics-based inverse rendering with generative modeling for high-quality urban scene relighting. It decomposes urban videos into geometry, materials, and HDR lighting for novel-view rendering, relighting, and scene-edit applications.
 
 
 <a id="news"></a>
@@ -51,10 +51,6 @@ BRDFusion combines physics-based inverse rendering with generative modeling for 
 
 <a id="table-of-contents"></a>
 ## 📋 Table of Contents
-
-- [📰 News](#news)
-- [📝 TODO](#todo)
-- [✨ What You Can Do](#what-you-can-do)
 - [🚀 Quick Start](#quick-start)
   - [🔦 Prerequisites](#prerequisites)
   - [⚙️ Installation](#installation)
@@ -66,14 +62,11 @@ BRDFusion combines physics-based inverse rendering with generative modeling for 
   - [🎬 Applications](#applications)
 - [🏋️ Training](#training)
 - [🛣️ Additional Waymo Scenes Processing](#additional-waymo-scenes-processing)
-- [🙏 Acknowledgements](#acknowledgements)
-- [📚 Citation](#citation)
-- [📄 License](#license)
 
 <a id="quick-start"></a>
 ## 🚀 Quick Start
 
-We provide preprocessed datasets and pretrained checkpoints for direct inference and evaluation. Training is covered in [Training](#training), with optional Waymo preprocessing notes in [Additional Waymo Scenes Processing](#additional-waymo-scenes-processing).
+Use the provided preprocessed datasets and pretrained checkpoints for direct inference and evaluation. Training is covered in [Training](#training), and optional Waymo preprocessing is covered in [Additional Waymo Scenes Processing](#additional-waymo-scenes-processing).
 
 <a id="prerequisites"></a>
 ### 🔦 Prerequisites
@@ -87,7 +80,7 @@ The codebase has been tested on:
 <a id="installation"></a>
 ### ⚙️ Installation
 
-BRDFusion uses two environments for inference:
+BRDFusion uses two environments for the main workflows:
 
 | Environment | Used for |
 | --- | --- |
@@ -151,9 +144,7 @@ pip install git+https://github.com/NVlabs/nvdiffrast.git
 For non-Ubuntu platforms, check the [nvdiffrast documentation](https://nvlabs.github.io/nvdiffrast/) and [Dockerfile](https://github.com/NVlabs/nvdiffrast/blob/main/docker/Dockerfile).
 </details>
 
-
-
-Download DiffusionRenderer weights from [Hugging Face](https://huggingface.co/collections/zianw/cosmos-transfer1-diffusionrenderer-6849f2a4da267e55409b8125). Generate a Hugging Face access token, run `huggingface-cli login`, then place the weights under `third_party/cosmos1-diffusion-renderer/checkpoints`:
+After installing `cosmos-predict1`, download the DiffusionRenderer weights from [Hugging Face](https://huggingface.co/collections/zianw/cosmos-transfer1-diffusionrenderer-6849f2a4da267e55409b8125). Generate a Hugging Face access token, run `huggingface-cli login`, and place the weights under `third_party/cosmos1-diffusion-renderer/checkpoints`:
 
 ```bash
 CUDA_HOME=$CONDA_PREFIX PYTHONPATH=$(pwd) \
@@ -172,11 +163,9 @@ Prepare SMPL assets:
 
 We provide preprocessed evaluation data for selected Waymo Open Dataset scenes and all synthetic dataset scenes.
 
-The synthetic dataset includes ground-truth albedo, roughness, metallic, and relighting videos. It also includes shifted paths (`path*-3-calib_*`), which are used for the reported shifted-path metrics.
+The synthetic release includes ground-truth albedo, roughness, metallic, relighting videos, and shifted paths (`path*-3-calib_*`) used for the reported shifted-path metrics. The synthetic 3D assets come from [BlenderKit](https://www.blenderkit.com/), and the HDRIs come from [PolyHaven](https://polyhaven.com/hdris).
 
-For synthetic dataset scenes, we collect the 3D assets from [BlenderKit](https://www.blenderkit.com/), and HDRIs from [PolyHaven](https://polyhaven.com/hdris).
-
-Download the preprocessed datasets from [TBD: link] and unzip them under the repository root. The expected top-level layout is:
+Download the preprocessed datasets from [TBD: link], unzip them under the repository root, and keep this top-level layout:
 
 ```text
 data/
@@ -188,7 +177,6 @@ data/
 
 <details>
 <summary>Detailed dataset layout</summary>
-
 Frame files use the `<frame>_<camera>` naming convention, for example `000_0.png` for synthetic images and `000_0.jpg` for Waymo images and DiffusionRenderer priors.
 
 Synthetic original paths contain RGB frames, camera calibration, ground-truth intrinsics, DiffusionRenderer priors, and DiffusionLight lighting priors:
@@ -248,7 +236,7 @@ data/self/path1-3-calib_fixed_tree_gamma_full/qwantani_moon_noon_puresky_4k/
   qwantani_moon_noon_puresky_4k.exr
 ```
 
-Waymo scenes contain pre-processed data plus the priors needed by BRDFusion training:
+Waymo scenes contain preprocessed data plus the priors needed by BRDFusion training:
 
 ```text
 data/waymo/processed/training/003/
@@ -283,13 +271,13 @@ ckpt/
   waymo/{003,019,114,172,703}/checkpoint_final.pth
 ```
 
-Stage the downloaded checkpoints into the run-folder layout expected by the rendering tools:
+Stage the downloaded checkpoints into the run-folder layout used by the rendering tools:
 
 ```bash
 bash scripts/stage_ckpt.sh
 ```
 
-Staged checkpoints are placed in the run directories used by `tools/run_pipeline.py` and `scripts/applications/render.sh`.
+The staging script places checkpoints under the corresponding `work_dirs/` run directories for `tools/run_pipeline.py` and `scripts/applications/render.sh`.
 
 
 <a id="render-from-a-checkpoint"></a>
@@ -471,7 +459,7 @@ SPIRAL_TARGET_DISTANCE_M=10.0 \
 scripts/applications/render.sh
 ```
 
-We recommend using a night environment HDRI when enabling local lights. Please download the night HDRI [here](https://ambientcg.com/view?id=NightSkyHDRI001) from [ambientCG](https://ambientcg.com/).
+For local-light and headlight examples, use a night environment map such as [NightSkyHDRI001](https://ambientcg.com/view?id=NightSkyHDRI001) from [ambientCG](https://ambientcg.com/).
 
 Add local lights from a JSON config overlay:
 
@@ -609,7 +597,7 @@ Application renders are written under the render folder associated with the chec
 
 Training can be run on the provided synthetic dataset or on prepared Waymo scenes. The same driver handles training, rendering, Gen. Render, and metric computation.
 
-Use `tools/run_pipeline.py` as the main entrypoint. By default, it runs the full training pipeline; `--stage` lets you run only one part of the workflow.
+Use `tools/run_pipeline.py` as the main entrypoint. By default, it runs the full staged pipeline; `--stage` lets you run one part of the workflow.
 
 The released checkpoints use frames `0..50` with `test_image_stride=10`, and the examples below follow the same setting.
 
@@ -707,7 +695,7 @@ NUM_TIMESTEPS=51 \
 scripts/priors/run_dr_waymo.sh
 ```
 
-Install the DiffusionLight environment once before generating HDR priors. Make sure you login to the huggingface.
+Install the DiffusionLight environment once before generating HDR priors. Log in to Hugging Face before running the prior-generation wrappers.
 
 ```bash
 cd third_party/DiffusionLight-Turbo
