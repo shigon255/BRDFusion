@@ -34,7 +34,6 @@ BRDFusion combines physics-based inverse rendering with generative modeling for 
 ## 📝 TODO
 
 - [ ] Replace top resource placeholders with real links: Project Page, arXiv, Dataset, Pretrained Checkpoints, and Eval Results.
-- [ ] Replace the clone placeholder `git clone --recursive TBD` with the final repository URL.
 - [ ] Replace download placeholders for preprocessed datasets, pretrained checkpoints, and precomputed videos.
 - [ ] Update [News](#news) with concrete release dates once project resources are public.
 
@@ -98,7 +97,7 @@ BRDFusion uses two environments for inference:
 Clone the repository:
 
 ```bash
-git clone --recursive TBD
+git clone --recursive https://github.com/shigon255/BRDFusion.git
 cd BRDFusion
 ```
 
@@ -524,9 +523,6 @@ Application renders are written under the render folder associated with the chec
 
 Training can be run on the provided synthetic dataset or on prepared Waymo scenes. The same driver handles training, rendering, Gen. Render, and metric computation.
 
-<a id="run-the-staged-pipeline"></a>
-### 🔁 Run the Staged Pipeline
-
 Use `tools/run_pipeline.py` as the main entrypoint. By default, it runs the full training pipeline; `--stage` lets you run only one part of the workflow.
 
 The released checkpoints use frames `0..50` with `test_image_stride=10`, and the examples below follow the same setting.
@@ -677,5 +673,6 @@ If you find BRDFusion useful for your research, please consider citing:
 <a id="license"></a>
 ## 📄 License
 
-This repository is released under the license in [LICENSE](LICENSE). Third-party
-components under `third_party/` are governed by their respective licenses.
+BRDFusion source code is released under the MIT license in [LICENSE](LICENSE). Third-party components under `third_party/` are governed by their respective licenses.
+
+Third-party code, dependencies, and assets, including SMPL/SMPL-X, NVIDIA OptiX headers, DiffusionRenderer weights, pretrained checkpoints, datasets, and generated outputs, are governed by their own terms. Review the upstream licenses before use; commercial use may require separate permission from the corresponding rights holders.
