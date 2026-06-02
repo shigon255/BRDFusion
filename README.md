@@ -126,7 +126,7 @@ conda deactivate
 </details>
 
 <details>
-<summary>Install the DiffusionRenderer <code>cosmos-predict1</code> environment</summary>
+<summary>Install the DiffusionRenderer and download the weights <code>cosmos-predict1</code> environment</summary>
 
 ```bash
 cd third_party/cosmos1-diffusion-renderer
@@ -142,7 +142,6 @@ ln -sf $CONDA_PREFIX/lib/python3.10/site-packages/triton/backends/nvidia/include
 pip install git+https://github.com/NVlabs/nvdiffrast.git
 ```
 For non-Ubuntu platforms, check the [nvdiffrast documentation](https://nvlabs.github.io/nvdiffrast/) and [Dockerfile](https://github.com/NVlabs/nvdiffrast/blob/main/docker/Dockerfile).
-</details>
 
 After installing `cosmos-predict1`, download the DiffusionRenderer weights from [Hugging Face](https://huggingface.co/collections/zianw/cosmos-transfer1-diffusionrenderer-6849f2a4da267e55409b8125). Generate a Hugging Face access token, run `huggingface-cli login`, and place the weights under `third_party/cosmos1-diffusion-renderer/checkpoints`:
 
@@ -152,6 +151,9 @@ CUDA_HOME=$CONDA_PREFIX PYTHONPATH=$(pwd) \
 cd ../..
 conda deactivate
 ```
+</details>
+
+
 
 Prepare SMPL assets:
 
