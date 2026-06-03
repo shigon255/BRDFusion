@@ -75,6 +75,7 @@ The codebase has been tested on:
 
 - **OS**: Ubuntu 22.04
 - **GPU**: NVIDIA RTX A6000
+- **CUDA version**: 11.8
 - **Memory note**: An RTX 4090 can also run some stages when memory usage allows, but the Gen. Render stage can exceed the 24 GB memory limit.
 
 <a id="installation"></a>
