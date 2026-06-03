@@ -139,7 +139,7 @@ ln -sf $CONDA_PREFIX/lib/python3.10/site-packages/nvidia/*/include/* $CONDA_PREF
 pip install transformer-engine[pytorch]==1.12.0
 
 ln -sf $CONDA_PREFIX/lib/python3.10/site-packages/triton/backends/nvidia/include/crt $CONDA_PREFIX/include/
-pip install git+https://github.com/NVlabs/nvdiffrast.git
+CC=gcc-11 CXX=g++-11 pip install --no-build-isolation git+https://github.com/NVlabs/nvdiffrast.git
 ```
 For non-Ubuntu platforms, check the [nvdiffrast documentation](https://nvlabs.github.io/nvdiffrast/) and [Dockerfile](https://github.com/NVlabs/nvdiffrast/blob/main/docker/Dockerfile).
 
