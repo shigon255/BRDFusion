@@ -120,6 +120,7 @@ CC=gcc-11 CXX=g++-11 pip install --no-build-isolation git+https://github.com/NVl
 cd third_party/smplx
 pip install -e .
 cd ../..
+pip install numpy==1.26.4
 conda deactivate
 ```
 
