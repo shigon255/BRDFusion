@@ -12,9 +12,9 @@
   <h3>
     <a href="#">🌐 Project Page</a> |
     <a href="#">📄 arXiv</a> |
-    <a href="#">🤗 Dataset</a> |
-    <a href="#">🤗 Pretrained Checkpoints</a> |
-    <a href="#">🤗 Eval Results</a>
+    <a href="https://huggingface.co/datasets/Shigon/BRDFusion_data">🤗 Dataset</a> |
+    <a href="https://huggingface.co/Shigon/BRDFusion_checkpoints">🤗 Pretrained Checkpoints</a> |
+    <a href="https://huggingface.co/datasets/Shigon/BRDFusion_videos">🤗 Eval Results</a>
   </h3>
 </div>
 
