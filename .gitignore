@@ -154,6 +154,8 @@ third_party/smplx/data/
 /night_gt_vids/
 /blurry_test/
 /pcd_render/
+/ckpt/
+/videos/
 
 # Generated media/artifacts. Images are intentionally not ignored globally:
 # vendored source trees may contain small tracked images.
