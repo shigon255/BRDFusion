@@ -74,7 +74,6 @@ The codebase has been tested on:
 
 - **OS**: Ubuntu 22.04
 - **GPU**: NVIDIA RTX A6000
-- **CUDA version**: 11.8
 - **C compiler**: `gcc` and `g++` version 11. We assume that the system provides the aliases `gcc-11` and `g++-11`.
 - **Memory note**: An RTX 4090 can also run some stages when memory usage allows, but the Gen. Render stage can exceed the 24 GB memory limit.
 
@@ -83,10 +82,10 @@ The codebase has been tested on:
 
 BRDFusion uses two environments for the main workflows:
 
-| Environment | Used for |
-| --- | --- |
-| `brdfusion` | checkpoint staging, PBR rendering, applications, and metrics |
-| `cosmos-predict1` | DiffusionRenderer Gen. Render refinement |
+| Environment | Used for | CUDA version |
+| --- | --- | --- |
+| `brdfusion` | checkpoint staging, PBR rendering, applications, and metrics | 11.8 |
+| `cosmos-predict1` | DiffusionRenderer Gen. Render refinement | 12.1 |
 
 Clone the repository:
 
@@ -144,7 +143,7 @@ pip install git+https://github.com/NVlabs/nvdiffrast.git
 ```
 For non-Ubuntu platforms, check the [nvdiffrast documentation](https://nvlabs.github.io/nvdiffrast/) and [Dockerfile](https://github.com/NVlabs/nvdiffrast/blob/main/docker/Dockerfile).
 
-After installing `cosmos-predict1`, download the DiffusionRenderer weights from [Hugging Face](https://huggingface.co/collections/zianw/cosmos-transfer1-diffusionrenderer-6849f2a4da267e55409b8125). Generate a Hugging Face access token, run `huggingface-cli login`, and place the weights under `third_party/cosmos1-diffusion-renderer/checkpoints`:
+After installing `cosmos-predict1`, download the DiffusionRenderer weights from [Hugging Face](https://huggingface.co/collections/zianw/cosmos-transfer1-diffusionrenderer-6849f2a4da267e55409b8125). Generate a Hugging Face access token, run `hf auth login`, and place the weights under `third_party/cosmos1-diffusion-renderer/checkpoints`:
 
 ```bash
 CUDA_HOME=$CONDA_PREFIX PYTHONPATH=$(pwd) \
