@@ -76,6 +76,7 @@ The codebase has been tested on:
 - **OS**: Ubuntu 22.04
 - **GPU**: NVIDIA RTX A6000
 - **CUDA version**: 11.8
+- **C compiler**: `gcc` and `g++` version 11. We assume that the system provides the aliases `gcc-11` and `g++-11`.
 - **Memory note**: An RTX 4090 can also run some stages when memory usage allows, but the Gen. Render stage can exceed the 24 GB memory limit.
 
 <a id="installation"></a>
