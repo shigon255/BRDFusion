@@ -665,7 +665,7 @@ Processing additional Waymo scenes is optional. Use this section when you want t
 <a id="data-layout"></a>
 ### 🗂️ Data Layout
 
-Waymo scenes use the original DriveStudio processed format. Place each scene under `data/waymo/processed/training/` using a three-digit scene id:
+Place each Waymo scene under `data/waymo/processed/training/` using a three-digit scene id:
 
 ```text
 data/waymo/processed/training/
@@ -679,7 +679,7 @@ data/waymo/processed/training/
     dynamic_masks/
 ```
 
-Prepare new Waymo scenes with the original DriveStudio instructions in [docs/Waymo.md](docs/Waymo.md). The commands below accept either padded or unpadded ids; for example, `SCENE=3` resolves to scene `003`.
+Prepare new Waymo scenes with instructions in [docs/Waymo.md](docs/Waymo.md). The commands below accept either padded or unpadded ids; for example, `SCENE=3` resolves to scene `003`.
 
 <a id="prepare-priors"></a>
 ### 💡 Prepare Priors
