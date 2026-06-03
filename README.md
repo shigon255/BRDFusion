@@ -34,7 +34,6 @@ BRDFusion combines physics-based inverse rendering with generative modeling for 
 ## 📝 TODO
 
 - [ ] Replace top resource placeholders with real links: Project Page, arXiv, Dataset, Pretrained Checkpoints, and Eval Results.
-- [ ] Replace download placeholders for preprocessed datasets, pretrained checkpoints, and precomputed videos.
 - [ ] Update [News](#news) with concrete release dates once project resources are public.
 
 
@@ -169,7 +168,7 @@ We provide preprocessed evaluation data for selected Waymo Open Dataset scenes a
 
 The synthetic dataset capture the urban scene in Blender using 3 cameras. We render 6 paths in the scene. Each path includes 100 ground-truth RGB, material, and relighting RGB frames. For each path we render a shifted version (`path*-3-calib_*`) of it used for the reported NVS, inverse rendering, and NVS-relight metrics. Note that we use 1 camera and the first 51 frames for evaluation. The synthetic 3D assets come from [BlenderKit](https://www.blenderkit.com/), and the HDRIs come from [PolyHaven](https://polyhaven.com/hdris).
 
-Download the preprocessed datasets from [TBD: link], unzip them under the repository root, and keep this top-level layout:
+Download the preprocessed datasets from [huggingface](https://huggingface.co/datasets/Shigon/BRDFusion_data), unzip them under the repository root, and keep this top-level layout:
 
 ```text
 data/
@@ -267,7 +266,7 @@ For additional Waymo scenes, see [Additional Waymo Scenes Processing](#additiona
 <a id="download-pretrained-checkpoints"></a>
 ### 🧩 Download Pretrained Checkpoints
 
-We provide 1-camera checkpoints trained on frames `0..50` with `test_image_stride=10`. Download the checkpoints from [TBD: link for ckpt] and unzip them under `ckpt/`:
+We provide 1-camera checkpoints trained on frames `0..50` with `test_image_stride=10`. Download the checkpoints from [huggingface](https://huggingface.co/Shigon/BRDFusion_checkpoints) and unzip them under `ckpt/`:
 
 ```text
 ckpt/
@@ -390,7 +389,7 @@ Render outputs are written under `render/<target>/`, and metric JSONs are writte
 <a id="evaluate-precomputed-videos"></a>
 #### Evaluate Precomputed Videos
 
-For direct comparison with BRDFusion and baselines such as UrbanIR, InvRGB+L, and Gen3C+DR, download the precomputed videos from [TBD: link to precomputed videos] and unzip them under `videos/`:
+For direct comparison with BRDFusion and baselines such as UrbanIR, InvRGB+L, and Gen3C+DR, download the precomputed videos from [huggingface](https://huggingface.co/datasets/Shigon/BRDFusion_videos) and unzip them under `videos/`:
 
 ```text
 videos/
