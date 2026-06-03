@@ -512,6 +512,7 @@ scripts/applications/render.sh
 Export dynamic assets from a checkpoint:
 
 ```bash
+conda run -n brdfusion --no-capture-output \
 SOURCE_CKPT=/path/to/source/checkpoint_final.pth \
 OUTPUT_PATH=/path/to/exported_assets \
 EXPORT_MODE=per_object \
