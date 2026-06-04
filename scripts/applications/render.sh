@@ -256,11 +256,16 @@ if [[ "${HEADLIGHTS_ENABLED}" == "1" ]]; then
   [[ -n "${HEADLIGHT_INNER_ANGLE_DEG:-}" ]] && EXTRA_CONFIG_OPTS+=("trainer.tracer.eval_headlight_inner_angle_deg=${HEADLIGHT_INNER_ANGLE_DEG}")
   [[ -n "${HEADLIGHT_OUTER_ANGLE_DEG:-}" ]] && EXTRA_CONFIG_OPTS+=("trainer.tracer.eval_headlight_outer_angle_deg=${HEADLIGHT_OUTER_ANGLE_DEG}")
   [[ -n "${POINT_LIGHTS_USE_ENVMAP:-}" ]] && EXTRA_CONFIG_OPTS+=("trainer.tracer.point_lights_use_envmap=${POINT_LIGHTS_USE_ENVMAP}")
-  EMIT_HEADLIGHTS_VALUE="${EMIT_HEADLIGHTS:-${RENDER_POINT_LIGHT_EMITTERS:-${RENDER_LIGHT_EMITTERS:-}}}"
-  [[ -n "${EMIT_HEADLIGHTS_VALUE:-}" ]] && EXTRA_CONFIG_OPTS+=("trainer.tracer.render_point_light_emitters=${EMIT_HEADLIGHTS_VALUE}" "trainer.tracer.emit_for_eval_headlight=${EMIT_HEADLIGHTS_VALUE}")
+  if [[ -n "${EMIT_HEADLIGHTS:-}" ]]; then
+    if [[ "${EMIT_HEADLIGHTS}" == "1" ]]; then
+      EXTRA_CONFIG_OPTS+=("trainer.tracer.render_point_light_emitters=1" "trainer.tracer.emit_for_eval_headlight=1")
+    else
+      EXTRA_CONFIG_OPTS+=("trainer.tracer.emit_for_eval_headlight=${EMIT_HEADLIGHTS}")
+    fi
+  fi
   [[ -n "${POINT_LIGHT_EMITTER_COLOR_SCALE:-}" ]] && EXTRA_CONFIG_OPTS+=("trainer.tracer.point_light_emitter_color_scale=${POINT_LIGHT_EMITTER_COLOR_SCALE}")
   [[ -n "${POINT_LIGHT_EMITTER_RADIUS:-}" ]] && EXTRA_CONFIG_OPTS+=("trainer.tracer.point_light_emitter_radius=${POINT_LIGHT_EMITTER_RADIUS}")
-  if [[ "${EMIT_HEADLIGHTS_VALUE:-0}" == "1" ]]; then
+  if [[ "${EMIT_HEADLIGHTS:-0}" == "1" ]]; then
     append_tag "light_emitters"
   fi
 fi

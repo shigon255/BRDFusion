@@ -1456,6 +1456,9 @@ def main(args):
         device=device,
         use_pbr=(not args.no_pbr),
     )
+    insert_fallback_model_config = OmegaConf.create(
+        OmegaConf.to_container(trainer.model_config, resolve=True)
+    )
 
     if args.eval_headlight:
         trainer.tracer_cfg.eval_headlight_mode = True
@@ -1534,6 +1537,7 @@ def main(args):
                 target_world_xyz=_parse_optional_world_xyz(spec["target_world_xyz"]),
                 target_world_timestep=spec["target_world_timestep"],
                 target_world_yaw_deg=spec["target_world_yaw_deg"],
+                fallback_model_config=insert_fallback_model_config,
             )
             inserted_class_names.extend(insert_info["classes"])
             logger.info(
@@ -1569,6 +1573,7 @@ def main(args):
             target_world_xyz=_parse_optional_world_xyz(args.insert_target_world_xyz),
             target_world_timestep=args.insert_target_world_timestep,
             target_world_yaw_deg=args.insert_target_world_yaw_deg,
+            fallback_model_config=insert_fallback_model_config,
         )
         logger.info(
             "Inserted dynamic asset for eval-only rendering from %s | classes=%s | scale=%.6f | placement=%s | stats=%s",

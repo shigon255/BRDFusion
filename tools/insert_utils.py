@@ -1,5 +1,6 @@
 import os
-from typing import Dict, List, Optional, Sequence, Tuple
+import logging
+from typing import Dict, List, Optional, Sequence, Set, Tuple
 
 import numpy as np
 import torch
@@ -9,6 +10,7 @@ from torch.nn import Parameter
 
 from models.nodes.rigid import RigidNodes
 from models.trainers.base import GSModelType
+from utils.misc import import_str
 
 
 POINT_ID_KEYS = ("points_ids", "point_ids")
@@ -19,6 +21,11 @@ TIME_INSTANCE_KEYS = {
     "smpl_qauts",
 }
 SUPPORTED_DYNAMIC_CLASSES = ("RigidNodes", "SMPLNodes", "DeformableNodes")
+DYNAMIC_CLASS_MODEL_TYPES = {
+    "RigidNodes": GSModelType.RigidNodes,
+    "SMPLNodes": GSModelType.SMPLNodes,
+    "DeformableNodes": GSModelType.DeformableNodes,
+}
 INSTANCE_MAJOR_TEMPLATE_KEYS = {
     "template.init_beta",
     "template.A0_inv",
@@ -32,6 +39,8 @@ INSTANCE_MAJOR_TEMPLATE_KEYS = {
     "template.voxel_deformer.scale",
     "template.voxel_deformer.grid_denorm",
 }
+
+logger = logging.getLogger(__name__)
 
 
 def _safe_logit(x: torch.Tensor, eps: float = 1e-6) -> torch.Tensor:
@@ -699,6 +708,74 @@ def _align_source_time_dims(
     return out
 
 
+def _align_source_time_dims_to_length(
+    source_state: Dict[str, torch.Tensor],
+    target_num_timesteps: int,
+) -> Dict[str, torch.Tensor]:
+    out: Dict[str, torch.Tensor] = {}
+    tgt_t = max(1, int(target_num_timesteps))
+    for key, val in source_state.items():
+        if key in TIME_INSTANCE_KEYS and torch.is_tensor(val) and val.ndim >= 1:
+            src_t = int(val.shape[0])
+            if src_t > tgt_t:
+                out[key] = val[:tgt_t]
+            elif src_t < tgt_t:
+                pad_count = tgt_t - src_t
+                pad = val[-1:].repeat((pad_count,) + (1,) * (val.ndim - 1))
+                out[key] = torch.cat([val, pad], dim=0)
+            else:
+                out[key] = val
+        else:
+            out[key] = val
+    return out
+
+
+def _copy_model_config_for_eval(model_cfg):
+    if OmegaConf.is_config(model_cfg):
+        return OmegaConf.create(OmegaConf.to_container(model_cfg, resolve=True))
+    if hasattr(model_cfg, "copy"):
+        return OmegaConf.create(model_cfg.copy())
+    return OmegaConf.create(model_cfg)
+
+
+def _ensure_dynamic_model_for_eval(
+    trainer,
+    class_name: str,
+    fallback_model_config: Optional[OmegaConf],
+) -> bool:
+    if class_name in trainer.models:
+        return False
+    if fallback_model_config is None or class_name not in fallback_model_config:
+        raise KeyError(
+            "Requested class is missing in the current checkpoint model and cannot be "
+            f"recreated from config: {class_name}."
+        )
+
+    model_cfg = _copy_model_config_for_eval(fallback_model_config[class_name])
+    if "ctrl" not in model_cfg or "optim" not in model_cfg:
+        model_cfg = trainer.update_gaussian_cfg(model_cfg)
+
+    model = import_str(model_cfg.type)(
+        **model_cfg,
+        class_name=class_name,
+        scene_scale=trainer.scene_radius,
+        scene_origin=trainer.scene_origin,
+        num_train_images=trainer.num_train_images,
+        device=trainer.device,
+    )
+    model.step = trainer.step
+    if hasattr(trainer, "normalized_timestamps") and hasattr(model, "register_normalized_timestamps"):
+        model.register_normalized_timestamps(trainer.normalized_timestamps)
+    if hasattr(model, "set_bbox"):
+        model.set_bbox(trainer.aabb)
+
+    trainer.models[class_name] = model
+    trainer.model_config[class_name] = model_cfg
+    trainer.gaussian_classes[class_name] = DYNAMIC_CLASS_MODEL_TYPES[class_name]
+    logger.info("Recreated missing dynamic model for eval insertion: %s", class_name)
+    return True
+
+
 def _maybe_scale_source_states_for_eval(
     source_states: Dict[str, Dict[str, torch.Tensor]],
     target_states: Dict[str, Dict[str, torch.Tensor]],
@@ -943,6 +1020,7 @@ def insert_dynamic_asset_for_eval(
     target_world_xyz: Optional[Sequence[float]] = None,
     target_world_timestep: Optional[int] = None,
     target_world_yaw_deg: Optional[float] = None,
+    fallback_model_config: Optional[OmegaConf] = None,
 ) -> Dict[str, object]:
     if not os.path.exists(asset_path):
         raise FileNotFoundError(f"Dynamic asset path not found: {asset_path}")
@@ -958,11 +1036,14 @@ def insert_dynamic_asset_for_eval(
         raise KeyError(f"Requested classes missing in asset: {missing_in_asset}")
 
     missing_in_model = [c for c in class_list if c not in trainer.models]
-    if missing_in_model:
-        raise KeyError(
-            "Requested classes missing in current checkpoint model: "
-            f"{missing_in_model}."
-        )
+    created_empty_classes: Set[str] = set()
+    for class_name in missing_in_model:
+        if _ensure_dynamic_model_for_eval(
+            trainer=trainer,
+            class_name=class_name,
+            fallback_model_config=fallback_model_config,
+        ):
+            created_empty_classes.add(class_name)
 
     source_states: Dict[str, Dict[str, torch.Tensor]] = {}
     target_states: Dict[str, Dict[str, torch.Tensor]] = {}
@@ -971,6 +1052,8 @@ def insert_dynamic_asset_for_eval(
             package_classes[class_name]["state_dict"],
             instance_ids=package_classes[class_name].get("instance_ids"),
         )
+        if class_name in created_empty_classes:
+            continue
         target_states[class_name] = _normalize_instance_major_state(
             {
                 k: (v.detach().clone() if torch.is_tensor(v) else v)
@@ -1018,7 +1101,7 @@ def insert_dynamic_asset_for_eval(
     else:
         existing_centers_list: List[torch.Tensor] = []
         for class_name in SUPPORTED_DYNAMIC_CLASSES:
-            if class_name not in trainer.models:
+            if class_name not in trainer.models or class_name in created_empty_classes:
                 continue
             state = trainer.models[class_name].state_dict()
             if "instances_trans" not in state:
@@ -1090,26 +1173,38 @@ def insert_dynamic_asset_for_eval(
     stats: Dict[str, Dict[str, int]] = {}
     for class_name in class_list:
         model = trainer.models[class_name]
-        target_state = _normalize_instance_major_state(
-            {
-                k: (v.detach().clone() if torch.is_tensor(v) else v)
-                for k, v in model.state_dict().items()
-            }
-        )
-        src_state = _align_source_time_dims(source_states[class_name], target_state)
+        if class_name in created_empty_classes:
+            target_state = None
+            src_state = _align_source_time_dims_to_length(
+                source_states[class_name],
+                target_num_timesteps=dataset.num_img_timesteps,
+            )
+        else:
+            target_state = _normalize_instance_major_state(
+                {
+                    k: (v.detach().clone() if torch.is_tensor(v) else v)
+                    for k, v in model.state_dict().items()
+                }
+            )
+            src_state = _align_source_time_dims(source_states[class_name], target_state)
+
         transformed_src_state = _apply_group_transform_to_state(
             state=src_state,
             q_global=q_global,
             source_center=source_group_center,
             target_center=target_anchor_pos,
         )
-        merged_state = _append_class_state_for_eval(
-            target_state=target_state,
-            src_state=transformed_src_state,
-        )
-        merged_state = _normalize_instance_major_state(merged_state)
+        if target_state is None:
+            merged_state = _normalize_instance_major_state(transformed_src_state)
+            old_instances = 0
+        else:
+            merged_state = _append_class_state_for_eval(
+                target_state=target_state,
+                src_state=transformed_src_state,
+            )
+            merged_state = _normalize_instance_major_state(merged_state)
+            old_instances = _get_num_instances(target_state)
 
-        old_instances = _get_num_instances(target_state)
         new_instances = _get_num_instances(merged_state)
         stats[class_name] = {
             "old_instances": int(old_instances),

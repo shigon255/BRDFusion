@@ -503,11 +503,13 @@ HEADLIGHT_LATERAL_OFFSET=0.8 \
 HEADLIGHT_DOWN_OFFSET=0.3 \
 HEADLIGHT_FORWARD_OFFSET=1.5 \
 HEADLIGHT_AS_SPOTLIGHT=1 \
-HEADLIGHT_INNER_ANGLE_DEG=15 \
-HEADLIGHT_OUTER_ANGLE_DEG=35 \
-EMIT_HEADLIGHTS=1 \
+HEADLIGHT_INNER_ANGLE_DEG=40 \
+HEADLIGHT_OUTER_ANGLE_DEG=60 \
 scripts/applications/render.sh
 ```
+
+Set `EMIT_HEADLIGHTS=1` only when you intentionally want to render visible
+headlight emitter gaussians for debugging.
 
 Export dynamic assets from a checkpoint:
 
