@@ -87,7 +87,7 @@ BRDFusion uses two environments for the main workflows:
 | `brdfusion` | checkpoint staging, PBR rendering, applications, and metrics | 11.8 |
 | `cosmos-predict1` | DiffusionRenderer Gen. Render refinement | 12.1 |
 
-Note that we install CUDA 11.8 in the conda env, while using CUDA 12.1 in the system. If your system don't have CUDA 12.1 installed, install it in conda env as well.
+Note that we install CUDA 11.8 in the `brdfusion` env, while using CUDA 12.1 in the system for `cosmos-predict1`. If your system don't have CUDA 12.1 installed, install it in `cosmos-predict1` as well.
 
 Clone the repository:
 
