@@ -82,10 +82,10 @@ The codebase has been tested on:
 
 BRDFusion uses two environments for the main workflows:
 
-| Environment | Used for | CUDA version |
-| --- | --- | --- |
-| `brdfusion` | checkpoint staging, PBR rendering, applications, and metrics | 11.8 |
-| `cosmos-predict1` | DiffusionRenderer Gen. Render refinement | 12.1 |
+| Environment | Used for |
+| --- | --- |
+| `brdfusion` | checkpoint staging, PBR rendering, applications, and metrics |
+| `cosmos-predict1` | DiffusionRenderer Gen. Render refinement |
 
 Clone the repository:
 
