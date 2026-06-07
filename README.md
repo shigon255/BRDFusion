@@ -4,7 +4,7 @@
   <p>
     <a href="https://shigon255.github.io/"><strong>Yi-Ruei Liu</strong></a> ·
     <a href="https://jayinnn.dev/"><strong>Jie-Ying Lee</strong></a> ·
-    <strong>Zheng-Hui Huang</strong> ·
+    <a href="https://brian90709.github.io/"><strong>Zheng-Hui Huang</strong></a> ·
     <a href="https://yulunalexliu.github.io/"><strong>Yu-Lun Liu</strong></a> ·
     <a href="https://chih-hao-lin.github.io/"><strong>Chih-Hao Lin</strong></a>
   </p>
