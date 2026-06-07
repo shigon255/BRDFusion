@@ -732,7 +732,7 @@ Merged light priors are written to `dlenvmap/*_envmap_median.exr` inside the sce
 <a id="acknowledgements"></a>
 ## 🙏 Acknowledgements
 
-This project builds on [DriveStudio](https://github.com/ziyc/drivestudio), [DiffusionRenderer](https://github.com/nv-tlabs/cosmos-transfer1-diffusion-renderer), and [DiffusionLight-Turbo](https://github.com/DiffusionLight/DiffusionLight-Turbo). We thank the authors of these projects for releasing their code and resources.
+This project builds on [DriveStudio](https://github.com/ziyc/drivestudio), [3DGRUT](https://github.com/nv-tlabs/3dgrut), [DiffusionRenderer](https://github.com/nv-tlabs/cosmos-transfer1-diffusion-renderer), and [DiffusionLight-Turbo](https://github.com/DiffusionLight/DiffusionLight-Turbo). We thank the authors of these projects for releasing their code and resources.
 
 <a id="citation"></a>
 ## 📚 Citation
@@ -751,5 +751,3 @@ If you find BRDFusion useful for your research, please consider citing:
 ## 📄 License
 
 BRDFusion source code is released under the MIT license in [LICENSE](LICENSE). Third-party components under `third_party/` are governed by their respective licenses.
-
-Third-party code, dependencies, and assets, including SMPL/SMPL-X, NVIDIA OptiX headers, DiffusionRenderer weights, pretrained checkpoints, datasets, and generated outputs, are governed by their own terms. Review the upstream licenses before use; commercial use may require separate permission from the corresponding rights holders.
