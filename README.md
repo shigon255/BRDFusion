@@ -735,6 +735,8 @@ Merged light priors are written to `dlenvmap/*_envmap_median.exr` inside the sce
 
 This project builds on [DriveStudio](https://github.com/ziyc/drivestudio), [3DGRUT](https://github.com/nv-tlabs/3dgrut), [DiffusionRenderer](https://github.com/nv-tlabs/cosmos-transfer1-diffusion-renderer), and [DiffusionLight-Turbo](https://github.com/DiffusionLight/DiffusionLight-Turbo). We thank the authors of these projects for releasing their code and resources.
 
+This research was funded by the National Science and Technology Council, Taiwan, under Grants NSTC 112-2222-E-A49-004-MY2 and 113-2628-E-A49-023-. The authors are grateful to Google, NVIDIA, and MediaTek Inc. for their generous donations. Yu-Lun Liu acknowledges the Yushan Young Fellow Program by the MOE in Taiwan.
+
 <a id="citation"></a>
 ## 📚 Citation
 
