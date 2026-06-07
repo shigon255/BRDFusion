@@ -25,18 +25,12 @@
 BRDFusion combines physics-based inverse rendering with generative modeling for high-quality urban scene relighting. It decomposes urban videos into geometry, materials, and HDR lighting for novel-view rendering, relighting, and scene-edit applications.
 
 
-<a id="news"></a>
+<!-- <a id="news"></a>
 ## 📰 News
 
-- Release updates for the project page, paper, datasets, checkpoints, and evaluation results will be posted here.
+- 2026/6/7: Code Release. -->
 
-<a id="todo"></a>
-## 📝 TODO
-
-- [ ] Replace top resource placeholders with real links: Project Page, arXiv, Dataset, Pretrained Checkpoints, and Eval Results.
-- [ ] Update [News](#news) with concrete release dates once project resources are public.
-
-
+<!-- 
 <a id="what-you-can-do"></a>
 ## ✨ What You Can Do
 
@@ -46,7 +40,7 @@ BRDFusion combines physics-based inverse rendering with generative modeling for 
 | Run Gen. Render refinement | `tools/run_pipeline.py --stage gen_render` |
 | Compute metrics | `tools/run_pipeline.py --stage compute_metrics` or precomputed videos |
 | Train BRDFusion | `tools/run_pipeline.py` |
-| Run relighting and scene-edit applications | `scripts/applications/render.sh` |
+| Run relighting and scene-edit applications | `scripts/applications/render.sh` | -->
 
 <a id="table-of-contents"></a>
 ## 📋 Table of Contents
