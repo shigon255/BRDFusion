@@ -7,14 +7,14 @@
       "render_point_light_emitters": true,
       "point_lights": [
         {
-          "position": [46.5,30.3,8.0],
+          "position": [53, -4.6, 10.2],
           "intensity": [152,126,75],
           "direction": [0.03,-0.04,-0.95],
           "inner_angle_deg": 30.0,
           "outer_angle_deg": 65.0
         },
         {
-          "position": [87.214039, 60.839840, 5.993318],
+          "position": [95, -4.8, 10.5],
           "intensity": [152,126,75],
           "direction": [0.03,-0.04,-0.95],
           "inner_angle_deg": 30.0,

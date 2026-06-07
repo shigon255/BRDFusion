@@ -244,12 +244,16 @@ def render(
                     if isinstance(v, Tensor):
                         cam_infos[k] = v.cuda(non_blocking=True)
             
-            # print camera position, forward, up, left
+            # Human-readable directions derived from OpenCV camera axes:
+            # +x is right, +y is down, +z is forward.
             cam_position = cam_infos["camera_to_world"][:3, 3]
+            cam_forward = cam_infos["camera_to_world"][:3, 2]
+            cam_up = -cam_infos["camera_to_world"][:3, 1]
+            cam_left = -cam_infos["camera_to_world"][:3, 0]
             print(f"Camera position: {cam_position.cpu().numpy()}")
-            print(f"Camera forward: {cam_infos['camera_to_world'][:3, 2].cpu().numpy()}")
-            print(f"Camera up: {cam_infos['camera_to_world'][:3, 1].cpu().numpy()}")
-            print(f"Camera left: {cam_infos['camera_to_world'][:3, 0].cpu().numpy()}")
+            print(f"Camera forward: {cam_forward.cpu().numpy()}")
+            print(f"Camera up: {cam_up.cpu().numpy()}")
+            print(f"Camera left: {cam_left.cpu().numpy()}")
 
             # render the image
             if (timing or measure_fps) and torch.cuda.is_available():

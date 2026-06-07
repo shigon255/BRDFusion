@@ -17,6 +17,10 @@ class RigidNodes(VanillaGaussians):
         **kwargs
     ):
         super().__init__(**kwargs)
+        self.temporal_context_active = False
+        self.temporal_frame0 = 0
+        self.temporal_frame1 = 0
+        self.temporal_alpha = 0.0
         
     @property
     def num_instances(self):
@@ -25,11 +29,107 @@ class RigidNodes(VanillaGaussians):
     def num_frames(self):
         return self.instances_fv.shape[0]
     
+    def _frame_to_int(self, frame_id) -> int:
+        if torch.is_tensor(frame_id):
+            return int(frame_id.detach().cpu().item())
+        return int(frame_id)
+
+    def set_temporal_context(
+        self,
+        frame0: int,
+        frame1: int,
+        alpha: float,
+        nearest_frame: int = None,
+        active: bool = False,
+    ) -> None:
+        self.temporal_frame0 = int(frame0)
+        self.temporal_frame1 = int(frame1)
+        self.temporal_alpha = float(alpha)
+        self.temporal_context_active = bool(active)
+
+    def _has_temporal_context(self) -> bool:
+        return (
+            bool(getattr(self, "temporal_context_active", False))
+            and self.temporal_frame0 != self.temporal_frame1
+            and abs(float(self.temporal_alpha)) > 1e-12
+        )
+
+    def _current_frame_index(self) -> int:
+        return self._frame_to_int(self.cur_frame)
+
+    def _current_endpoint_valid_masks(self):
+        frame0 = int(max(0, min(self.temporal_frame0, self.num_frames - 1)))
+        frame1 = int(max(0, min(self.temporal_frame1, self.num_frames - 1)))
+        valid0 = self.instances_fv[frame0].bool()
+        valid1 = self.instances_fv[frame1].bool()
+        return frame0, frame1, valid0, valid1
+
+    def _temporal_interpolate_tensor(self, tensor: torch.Tensor, use_quat: bool = False) -> torch.Tensor:
+        frame0, frame1, valid0, valid1 = self._current_endpoint_valid_masks()
+        cur_frame = self._current_frame_index()
+        alpha = float(self.temporal_alpha)
+        value0 = tensor[frame0]
+        value1 = tensor[frame1]
+        if use_quat:
+            interp = interpolate_quats(value0, value1, fraction=alpha)
+        else:
+            interp = (1.0 - alpha) * value0 + alpha * value1
+        out = tensor[cur_frame].clone()
+        both_valid = valid0 & valid1
+        only0 = valid0 & ~valid1
+        only1 = valid1 & ~valid0
+        out[both_valid] = interp[both_valid]
+        out[only0] = value0[only0]
+        out[only1] = value1[only1]
+        return out
+
+    def _test_smooth_tensor(self, tensor: torch.Tensor, use_quat: bool = False) -> torch.Tensor:
+        cur_frame = self._current_frame_index()
+        prev_value = tensor[cur_frame - 1]
+        next_value = tensor[cur_frame + 1]
+        cur_value = tensor[cur_frame]
+        if use_quat:
+            interp = interpolate_quats(prev_value, next_value)
+        else:
+            interp = (prev_value + next_value) * 0.5
+        inter_valid_mask = self.instances_fv[cur_frame - 1] & self.instances_fv[cur_frame + 1]
+        return torch.where(inter_valid_mask[(...,) + (None,) * (interp.ndim - 1)], interp, cur_value)
+
+    def _get_current_instance_mask(self) -> torch.Tensor:
+        if self._has_temporal_context():
+            _, _, valid0, valid1 = self._current_endpoint_valid_masks()
+            return valid0 | valid1
+        return self.instances_fv[self._current_frame_index()]
+
+    def _get_current_instance_quats(self) -> torch.Tensor:
+        if self._has_temporal_context():
+            return self._temporal_interpolate_tensor(self.instances_quats, use_quat=True)
+        cur_frame = self._current_frame_index()
+        if self.in_test_set and cur_frame - 1 > 0 and cur_frame + 1 < self.num_frames:
+            return self._test_smooth_tensor(self.instances_quats, use_quat=True)
+        return self.instances_quats[cur_frame]
+
+    def _get_current_instance_trans(self) -> torch.Tensor:
+        if self._has_temporal_context():
+            return self._temporal_interpolate_tensor(self.instances_trans, use_quat=False)
+        cur_frame = self._current_frame_index()
+        if self.in_test_set and cur_frame - 1 > 0 and cur_frame + 1 < self.num_frames:
+            return self._test_smooth_tensor(self.instances_trans, use_quat=False)
+        return self.instances_trans[cur_frame]
+
+    def get_current_normed_time(self) -> torch.Tensor:
+        if self._has_temporal_context() and hasattr(self, "normalized_timestamps"):
+            frame0 = int(max(0, min(self.temporal_frame0, len(self.normalized_timestamps) - 1)))
+            frame1 = int(max(0, min(self.temporal_frame1, len(self.normalized_timestamps) - 1)))
+            alpha = float(self.temporal_alpha)
+            return (1.0 - alpha) * self.normalized_timestamps[frame0] + alpha * self.normalized_timestamps[frame1]
+        return self.normalized_timestamps[self._current_frame_index()]
+
     def get_pts_valid_mask(self):
         """
         get the mask for valid points
         """
-        return self.instances_fv[self.cur_frame][self.point_ids[..., 0]]
+        return self._get_current_instance_mask()[self.point_ids[..., 0]]
     
     def set_cur_frame(self, frame_id: int):
         self.cur_frame = frame_id
@@ -356,40 +456,13 @@ class RigidNodes(VanillaGaussians):
         """
         assert means.shape[0] == self.point_ids.shape[0], \
             "its a bug here, we need to pass the mask for points_ids"
-        if self.in_test_set and (
-            self.cur_frame - 1 > 0 and self.cur_frame + 1 < self.num_frames
-        ):
-            # use the previous and next frame to interpolate the pose
-            _quats_prev_frame = self.instances_quats[self.cur_frame - 1]
-            _quats_next_frame = self.instances_quats[self.cur_frame + 1]
-            _quats_cur_frame = self.instances_quats[self.cur_frame]
-            interpolated_quats = interpolate_quats(_quats_prev_frame, _quats_next_frame)
-            
-            inter_valid_mask = self.instances_fv[self.cur_frame - 1] & self.instances_fv[self.cur_frame + 1]
-            quats_cur_frame = torch.where(
-                inter_valid_mask[:, None], interpolated_quats, _quats_cur_frame
-            )
-        else:
-            quats_cur_frame = self.instances_quats[self.cur_frame] # (num_instances, 4)
+        quats_cur_frame = self._get_current_instance_quats()
         rot_cur_frame = quat_to_rotmat(
             self.quat_act(quats_cur_frame)
         )                                                          # (num_instances, 3, 3)
         rot_per_pts = rot_cur_frame[self.point_ids[..., 0]]        # (num_points, 3, 3)
         
-        if self.in_test_set and (
-            self.cur_frame - 1 > 0 and self.cur_frame + 1 < self.num_frames
-        ):
-            _prev_ins_trans = self.instances_trans[self.cur_frame - 1]
-            _next_ins_trans = self.instances_trans[self.cur_frame + 1]
-            _cur_ins_trans = self.instances_trans[self.cur_frame]
-            interpolated_trans = (_prev_ins_trans + _next_ins_trans) * 0.5
-            
-            inter_valid_mask = self.instances_fv[self.cur_frame - 1] & self.instances_fv[self.cur_frame + 1]
-            trans_cur_frame = torch.where(
-                inter_valid_mask[:, None], interpolated_trans, _cur_ins_trans
-            )
-        else:
-            trans_cur_frame = self.instances_trans[self.cur_frame] # (num_instances, 3)
+        trans_cur_frame = self._get_current_instance_trans()
         trans_per_pts = trans_cur_frame[self.point_ids[..., 0]]
         
         # transform the means to world space
@@ -405,7 +478,7 @@ class RigidNodes(VanillaGaussians):
         """
         assert quats.shape[0] == self.point_ids.shape[0], \
             "its a bug here, we need to pass the mask for points_ids"
-        global_quats_cur_frame = self.instances_quats[self.cur_frame]
+        global_quats_cur_frame = self._get_current_instance_quats()
         global_quats_per_pts = global_quats_cur_frame[self.point_ids[..., 0]]
             
         global_quats_per_pts = self.quat_act(global_quats_per_pts)
@@ -419,7 +492,7 @@ class RigidNodes(VanillaGaussians):
         """
         assert normals.shape[0] == self.point_ids.shape[0], \
             "its a bug here, we need to pass the mask for points_ids"
-        global_quats_cur_frame = self.instances_quats[self.cur_frame]
+        global_quats_cur_frame = self._get_current_instance_quats()
         global_rots_cur_frame = quat_to_rotmat(
             self.quat_act(global_quats_cur_frame)
         )              

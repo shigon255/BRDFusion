@@ -922,7 +922,11 @@ def _load_insert_dynamic_specs(
     simplified_specs = bool(getattr(args, "insert_specs_simple", False))
     if simplified_specs:
         defaults = {
-            "anchor_timestep": 0,
+            "anchor_timestep": getattr(
+                args,
+                "resolved_insert_motion_start_timestep",
+                int(args.eval_start_timestep or 0),
+            ),
             "anchor_cam_id": 0,
             "source_anchor_timestep": None,
             "forward_m": 8.0,
@@ -940,6 +944,11 @@ def _load_insert_dynamic_specs(
             "target_world_xyz": None,
             "target_world_timestep": None,
             "target_world_yaw_deg": None,
+            "motion_start_timestep": getattr(
+                args,
+                "resolved_insert_motion_start_timestep",
+                args.insert_motion_start_timestep,
+            ),
         }
     else:
         defaults = {
@@ -961,6 +970,11 @@ def _load_insert_dynamic_specs(
             "target_world_xyz": _parse_optional_world_xyz(args.insert_target_world_xyz),
             "target_world_timestep": args.insert_target_world_timestep,
             "target_world_yaw_deg": args.insert_target_world_yaw_deg,
+            "motion_start_timestep": getattr(
+                args,
+                "resolved_insert_motion_start_timestep",
+                args.insert_motion_start_timestep,
+            ),
         }
 
     out: List[Dict[str, object]] = []
@@ -1473,6 +1487,17 @@ def main(args):
         f"Resuming training from {args.resume_from}, starting at step {trainer.step}"
     )
 
+    insert_motion_start_timestep = args.insert_motion_start_timestep
+    if insert_motion_start_timestep is None:
+        insert_motion_start_timestep = int(args.eval_start_timestep or 0)
+    insert_motion_start_timestep = int(insert_motion_start_timestep)
+    if insert_motion_start_timestep < 0 or insert_motion_start_timestep >= dataset.num_img_timesteps:
+        raise ValueError(
+            f"--insert_motion_start_timestep={insert_motion_start_timestep} is out of range "
+            f"[0, {dataset.num_img_timesteps - 1}]."
+        )
+    args.resolved_insert_motion_start_timestep = insert_motion_start_timestep
+
     if args.insert_rigid_ply is not None:
         if not os.path.exists(args.insert_rigid_ply):
             raise FileNotFoundError(f"insert_rigid_ply path not found: {args.insert_rigid_ply}")
@@ -1537,6 +1562,7 @@ def main(args):
                 target_world_xyz=_parse_optional_world_xyz(spec["target_world_xyz"]),
                 target_world_timestep=spec["target_world_timestep"],
                 target_world_yaw_deg=spec["target_world_yaw_deg"],
+                motion_start_timestep=spec["motion_start_timestep"],
                 fallback_model_config=insert_fallback_model_config,
             )
             inserted_class_names.extend(insert_info["classes"])
@@ -1573,6 +1599,7 @@ def main(args):
             target_world_xyz=_parse_optional_world_xyz(args.insert_target_world_xyz),
             target_world_timestep=args.insert_target_world_timestep,
             target_world_yaw_deg=args.insert_target_world_yaw_deg,
+            motion_start_timestep=insert_motion_start_timestep,
             fallback_model_config=insert_fallback_model_config,
         )
         logger.info(
@@ -1895,6 +1922,7 @@ if __name__ == "__main__":
     parser.add_argument("--insert_target_world_xyz", type=str, default=None, help="absolute world-space x,y,z target for inserted dynamic asset center at target timestep")
     parser.add_argument("--insert_target_world_timestep", type=int, default=None, help="target timestep where --insert_target_world_xyz should be enforced; defaults to --insert_anchor_timestep")
     parser.add_argument("--insert_target_world_yaw_deg", type=float, default=None, help="absolute world-up yaw angle in degrees for inserted dynamic asset; overrides camera-frame yaw/pitch/roll")
+    parser.add_argument("--insert_motion_start_timestep", type=int, default=None, help="target timestep where inserted dynamic asset motion starts from source frame 0; defaults to --eval_start_timestep or 0")
     parser.add_argument("--delete_rigid_ids", type=str, default=None, help="comma-separated rigid instance IDs to delete before rendering")
     parser.add_argument("--delete_smpl_ids", type=str, default=None, help="comma-separated SMPL instance IDs to delete before rendering")
     parser.add_argument("--delete_deformable_ids", type=str, default=None, help="comma-separated deformable instance IDs to delete before rendering")

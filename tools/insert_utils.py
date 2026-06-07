@@ -730,6 +730,39 @@ def _align_source_time_dims_to_length(
     return out
 
 
+def _retime_source_motion_to_target_length(
+    source_state: Dict[str, torch.Tensor],
+    target_num_timesteps: int,
+    motion_start_timestep: int,
+) -> Dict[str, torch.Tensor]:
+    out: Dict[str, torch.Tensor] = {}
+    tgt_t = max(1, int(target_num_timesteps))
+    start_t = int(motion_start_timestep)
+    if start_t < 0 or start_t >= tgt_t:
+        raise ValueError(
+            f"insert motion_start_timestep={start_t} is out of range [0, {tgt_t - 1}]."
+        )
+
+    for key, val in source_state.items():
+        if key not in TIME_INSTANCE_KEYS or not torch.is_tensor(val) or val.ndim < 1:
+            out[key] = val
+            continue
+
+        src_t = int(val.shape[0])
+        if src_t < 1:
+            raise ValueError(f"Cannot retime empty time tensor for key '{key}'.")
+
+        frame_ids = torch.arange(tgt_t, device=val.device) - start_t
+        before_start = frame_ids < 0
+        src_ids = torch.clamp(frame_ids, min=0, max=src_t - 1)
+        retimed = val.index_select(0, src_ids).clone()
+        if key == "instances_fv" and before_start.any():
+            retimed[before_start] = False
+        out[key] = retimed
+
+    return out
+
+
 def _copy_model_config_for_eval(model_cfg):
     if OmegaConf.is_config(model_cfg):
         return OmegaConf.create(OmegaConf.to_container(model_cfg, resolve=True))
@@ -1020,6 +1053,7 @@ def insert_dynamic_asset_for_eval(
     target_world_xyz: Optional[Sequence[float]] = None,
     target_world_timestep: Optional[int] = None,
     target_world_yaw_deg: Optional[float] = None,
+    motion_start_timestep: Optional[int] = None,
     fallback_model_config: Optional[OmegaConf] = None,
 ) -> Dict[str, object]:
     if not os.path.exists(asset_path):
@@ -1068,13 +1102,22 @@ def insert_dynamic_asset_for_eval(
         manual_scale=manual_scale,
     )
 
+    target_motion_start_timestep = int(0 if motion_start_timestep is None else motion_start_timestep)
+    if target_motion_start_timestep < 0 or target_motion_start_timestep >= dataset.num_img_timesteps:
+        raise ValueError(
+            f"insert motion_start_timestep={target_motion_start_timestep} is out of range "
+            f"[0, {dataset.num_img_timesteps - 1}]."
+        )
+
     direct_target_pos = _parse_optional_world_xyz(target_world_xyz)
     if direct_target_pos is not None and target_world_timestep is not None:
         target_anchor_timestep = int(np.clip(target_world_timestep, 0, dataset.num_img_timesteps - 1))
     else:
         target_anchor_timestep = int(np.clip(anchor_timestep, 0, dataset.num_img_timesteps - 1))
     requested_source_anchor_timestep = (
-        target_anchor_timestep if source_anchor_timestep is None else source_anchor_timestep
+        target_anchor_timestep - target_motion_start_timestep
+        if source_anchor_timestep is None
+        else source_anchor_timestep
     )
     source_time_lengths = [
         t for t in ( _get_num_timesteps(state) for state in source_states.values()) if t is not None
@@ -1139,6 +1182,7 @@ def insert_dynamic_asset_for_eval(
         f"asset={os.path.abspath(asset_path)} "
         f"target_anchor_timestep={target_anchor_timestep} "
         f"source_anchor_timestep={source_anchor_timestep} "
+        f"motion_start_timestep={target_motion_start_timestep} "
         f"offsets=(forward={float(forward_m):.4f}, right={float(right_m):.4f}, up={float(up_m):.4f}) "
         f"placement={placement_label} "
         f"search_enabled={search_enabled} "
@@ -1175,10 +1219,6 @@ def insert_dynamic_asset_for_eval(
         model = trainer.models[class_name]
         if class_name in created_empty_classes:
             target_state = None
-            src_state = _align_source_time_dims_to_length(
-                source_states[class_name],
-                target_num_timesteps=dataset.num_img_timesteps,
-            )
         else:
             target_state = _normalize_instance_major_state(
                 {
@@ -1186,7 +1226,11 @@ def insert_dynamic_asset_for_eval(
                     for k, v in model.state_dict().items()
                 }
             )
-            src_state = _align_source_time_dims(source_states[class_name], target_state)
+        src_state = _retime_source_motion_to_target_length(
+            source_states[class_name],
+            target_num_timesteps=dataset.num_img_timesteps,
+            motion_start_timestep=target_motion_start_timestep,
+        )
 
         transformed_src_state = _apply_group_transform_to_state(
             state=src_state,
@@ -1238,6 +1282,7 @@ def insert_dynamic_asset_for_eval(
         "placement_mode": placement_label,
         "target_anchor_timestep": int(target_anchor_timestep),
         "source_anchor_timestep": int(source_anchor_timestep),
+        "motion_start_timestep": int(target_motion_start_timestep),
         "target_world_xyz": None if direct_target_pos is None else [float(v) for v in direct_target_pos.tolist()],
         "target_world_yaw_deg": None if target_world_yaw_deg is None else float(target_world_yaw_deg),
         "stats": stats,

@@ -1,23 +1,29 @@
 {
   "items": [
     {
-      "asset_path": "/path/to/asset.pth",
-      "anchor_timestep": 30,
+      "asset_path": "/project2/yi-ray/BRDFusion/work_dirs/waymo_1cam_22/stage3_assets/RigidNodes/RigidNodes_0002.pth",
+      "anchor_timestep": 40,
       "anchor_cam_id": 0,
       "forward_m": 10.0,
       "right_m": 0.0,
-      "up_m": 0.0,
+      "up_m": -1.3,
       "yaw_deg": 0.0,
+      "pitch_up_deg": 0.0,
+      "roll_left_deg": 0.0,
+      "motion_start_timestep": 40,
       "scale": 1.0
     },
     {
-      "asset_path": "/path/to/asset.pth",
-      "anchor_timestep": 30,
+      "asset_path": "/project2/yi-ray/BRDFusion/work_dirs/waymo_1cam_621/stage3_assets/SMPLNodes/SMPLNodes_0006.pth",
+      "anchor_timestep": 40,
       "anchor_cam_id": 0,
-      "forward_m": 10.0,
-      "right_m": -3.0,
-      "up_m": 0.0,
-      "yaw_deg": 15.0,
+      "right_m": -4.6,
+      "forward_m": 16.0,
+      "up_m": -0.8,
+      "yaw_deg": 0.0,
+      "pitch_up_deg": 0.0,
+      "roll_left_deg": 0.0,
+      "motion_start_timestep": 40,
       "scale": 1.0
     }
   ]

@@ -65,7 +65,7 @@ class DeformableNodes(RigidNodes):
         nonrigid_embed = self.instances_embedding[self.point_ids[..., 0]]
         ins_height = self.instances_size[self.point_ids[..., 0]][..., 2]
         x = local_means.data / ins_height[:, None] * 2
-        t = self.normalized_timestamps[self.cur_frame]
+        t = self.get_current_normed_time()
         t = t.unsqueeze(0).repeat(self.point_ids.shape[0], 1)
         delta_xyz, delta_quat, delta_scale = self.deform_network(x, t, nonrigid_embed)
         if self.gaussian_2d:

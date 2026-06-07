@@ -1672,6 +1672,67 @@ class MultiTrainer(BasicTrainer):
             results.update(extra_infos)
         
         return results
+
+    def _compute_temporal_context(self, normed_time: torch.Tensor) -> Dict[str, object]:
+        timestamps = self.normalized_timestamps
+        t = normed_time.detach().to(device=timestamps.device, dtype=timestamps.dtype)
+        nearest = int(torch.argmin(torch.abs(timestamps - t)).detach().cpu().item())
+        if timestamps.numel() <= 1:
+            return {
+                "nearest_frame": nearest,
+                "frame0": nearest,
+                "frame1": nearest,
+                "alpha": 0.0,
+                "active": False,
+            }
+
+        eps = 1e-8
+        if t <= timestamps[0] + eps:
+            frame0 = frame1 = 0
+            alpha = 0.0
+        elif t >= timestamps[-1] - eps:
+            frame0 = frame1 = int(timestamps.numel() - 1)
+            alpha = 0.0
+        else:
+            upper = int(torch.searchsorted(timestamps, t, right=False).detach().cpu().item())
+            upper = max(1, min(upper, int(timestamps.numel() - 1)))
+            if torch.abs(timestamps[upper] - t) <= eps:
+                frame0 = frame1 = upper
+                alpha = 0.0
+            else:
+                frame0 = upper - 1
+                frame1 = upper
+                denom = timestamps[frame1] - timestamps[frame0]
+                alpha = float(((t - timestamps[frame0]) / (denom + 1e-12)).detach().cpu().item())
+
+        active = frame0 != frame1 and alpha > 1e-8 and alpha < 1.0 - 1e-8
+        return {
+            "nearest_frame": nearest,
+            "frame0": int(frame0),
+            "frame1": int(frame1),
+            "alpha": float(alpha),
+            "active": bool(active),
+        }
+
+    def _set_time_context_from_image_infos(self, image_infos: Dict[str, torch.Tensor]) -> None:
+        normed_time = image_infos["normed_time"].flatten()[0]
+        temporal_context = self._compute_temporal_context(normed_time)
+        self.cur_frame = torch.as_tensor(
+            temporal_context["nearest_frame"],
+            dtype=torch.long,
+            device=normed_time.device,
+        )
+
+        for model in self.models.values():
+            if hasattr(model, 'in_test_set'):
+                model.in_test_set = self.in_test_set
+
+        for class_name in self.gaussian_classes.keys():
+            model = self.models[class_name]
+            if hasattr(model, 'set_cur_frame'):
+                model.set_cur_frame(self.cur_frame)
+            if hasattr(model, 'set_temporal_context'):
+                model.set_temporal_context(**temporal_context)
     
     def forward(
         self, 
@@ -1707,22 +1768,8 @@ class MultiTrainer(BasicTrainer):
             with timer.time_block(name):
                 return fn()
 
-        # set current time or use temporal smoothing
-        normed_time = image_infos["normed_time"].flatten()[0]
-        self.cur_frame = torch.argmin(
-            torch.abs(self.normalized_timestamps - normed_time)
-        )
-        
-        # for evaluation
-        for model in self.models.values():
-            if hasattr(model, 'in_test_set'):
-                model.in_test_set = self.in_test_set
-
-        # assigne current frame to gaussian models
-        for class_name in self.gaussian_classes.keys():
-            model = self.models[class_name]
-            if hasattr(model, 'set_cur_frame'):
-                model.set_cur_frame(self.cur_frame)
+        # set current time and optional fractional-time interpolation context
+        self._set_time_context_from_image_infos(image_infos)
         
         # prapare data
         processed_cam = time_cuda(
@@ -2948,23 +2995,9 @@ class MultiTrainer(BasicTrainer):
     # save all properties to a full ply file
     def save_full_ply(self, save_path: str, image_infos: Dict[str, torch.Tensor], mask_func=None) -> None:
         # Note: can only be done in evaluation mode!
-        # set current time or use temporal smoothing
-        normed_time = image_infos["normed_time"].flatten()[0]
-        self.cur_frame = torch.argmin(
-            torch.abs(self.normalized_timestamps - normed_time)
-        )
+        # set current time and optional fractional-time interpolation context
+        self._set_time_context_from_image_infos(image_infos)
         
-        # for evaluation
-        for model in self.models.values():
-            if hasattr(model, 'in_test_set'):
-                model.in_test_set = self.in_test_set
-
-        # assigne current frame to gaussian models
-        for class_name in self.gaussian_classes.keys():
-            model = self.models[class_name]
-            if hasattr(model, 'set_cur_frame'):
-                model.set_cur_frame(self.cur_frame)
-                
         gs_dict = {
             "_means": [],
             "_opacities": [],

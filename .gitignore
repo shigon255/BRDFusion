@@ -87,6 +87,7 @@ assets/checkpoints/**/*
 !priors/
 priors/**/*
 !priors/.gitkeep
+assets/*.exr
 
 # Vendored source trees are tracked. Keep ignore rules here narrow so source
 # directories named "models", "assets", or "data" are not hidden by accident.
@@ -156,6 +157,8 @@ third_party/smplx/data/
 /pcd_render/
 /ckpt/
 /videos/
+/teaser_assets/
+
 
 # Generated media/artifacts. Images are intentionally not ignored globally:
 # vendored source trees may contain small tracked images.

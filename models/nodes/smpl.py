@@ -38,6 +38,20 @@ class SMPLNodes(RigidNodes):
     @property
     def num_frames(self):
         return self.instances_fv.shape[0]
+
+    def _get_current_smpl_quats(self) -> torch.Tensor:
+        if self._has_temporal_context():
+            return self._temporal_interpolate_tensor(self.smpl_qauts, use_quat=True)
+        cur_frame = self._current_frame_index()
+        if self.in_test_set and cur_frame - 1 > 0 and cur_frame + 1 < self.num_frames:
+            return self._test_smooth_tensor(self.smpl_qauts, use_quat=True)
+        return self.smpl_qauts[cur_frame]
+
+    def _get_current_theta(self) -> torch.Tensor:
+        return torch.cat(
+            (self._get_current_instance_quats(), self._get_current_smpl_quats()),
+            dim=1,
+        )
     
     def create_from_pcd(self, instance_pts_dict: Dict[str, torch.Tensor]) -> None:
         """
@@ -223,25 +237,9 @@ class SMPLNodes(RigidNodes):
         """
         assert means.shape[0] == self.point_ids.shape[0], \
             "its a bug here, we need to pass the mask for points_ids"
-        instance_mask = self.instances_fv[self.cur_frame]
-        if self.in_test_set and (
-            self.cur_frame - 1 > 0 and self.cur_frame + 1 < self.num_frames
-        ):
-            _prev_masked_theta = torch.cat((self.instances_quats[self.cur_frame - 1], self.smpl_qauts[self.cur_frame - 1]), dim=1)[instance_mask]
-            _next_masked_theta = torch.cat((self.instances_quats[self.cur_frame + 1], self.smpl_qauts[self.cur_frame + 1]), dim=1)[instance_mask]
-            _cur_masked_theta = torch.cat((self.instances_quats[self.cur_frame], self.smpl_qauts[self.cur_frame]), dim=1)[instance_mask]
-            interpolated_theta = interpolate_quats(_prev_masked_theta, _next_masked_theta)
-            
-            inter_valid_mask = self.instances_fv[self.cur_frame - 1, instance_mask] & self.instances_fv[self.cur_frame + 1, instance_mask]
-            masked_theta = torch.where(
-                inter_valid_mask[:, None, None], interpolated_theta, _cur_masked_theta
-            )
-        else:
-            theta = torch.cat(
-                (self.instances_quats[self.cur_frame], self.smpl_qauts[self.cur_frame]), dim=1
-            )
-            masked_theta = theta[instance_mask]
-        masked_theta = self.quat_act(masked_theta)
+        instance_mask = self._get_current_instance_mask()
+        theta = self._get_current_theta()
+        masked_theta = self.quat_act(theta[instance_mask])
         W, A = self.template(
             masked_theta = masked_theta, 
             instances_mask = instance_mask,
@@ -260,20 +258,7 @@ class SMPLNodes(RigidNodes):
         means_container.index_add_(0, instance_mask.nonzero().squeeze(), deformed_means)
         means_container = means_container.reshape(-1, 3)
 
-        if self.in_test_set and (
-            self.cur_frame - 1 > 0 and self.cur_frame + 1 < self.num_frames
-        ):
-            _prev_ins_trans = self.instances_trans[self.cur_frame - 1]
-            _next_ins_trans = self.instances_trans[self.cur_frame + 1]
-            _cur_ins_trans = self.instances_trans[self.cur_frame]
-            interpolated_trans = (_prev_ins_trans + _next_ins_trans) * 0.5
-            
-            inter_valid_mask = self.instances_fv[self.cur_frame - 1] & self.instances_fv[self.cur_frame + 1]
-            trans_cur_frame = torch.where(
-                inter_valid_mask[:, None], interpolated_trans, _cur_ins_trans
-            )
-        else:
-            trans_cur_frame = self.instances_trans[self.cur_frame] # (num_instances, 3)
+        trans_cur_frame = self._get_current_instance_trans()
         trans_per_pts = trans_cur_frame[self.point_ids[..., 0]]
         
         # transform the means to world space
@@ -287,25 +272,9 @@ class SMPLNodes(RigidNodes):
         """
         assert means.shape[0] == self.point_ids.shape[0], \
             "its a bug here, we need to pass the mask for points_ids"
-        instance_mask = self.instances_fv[self.cur_frame]
-        if self.in_test_set and (
-            self.cur_frame - 1 > 0 and self.cur_frame + 1 < self.num_frames
-        ):
-            _prev_masked_theta = torch.cat((self.instances_quats[self.cur_frame - 1], self.smpl_qauts[self.cur_frame - 1]), dim=1)[instance_mask]
-            _next_masked_theta = torch.cat((self.instances_quats[self.cur_frame + 1], self.smpl_qauts[self.cur_frame + 1]), dim=1)[instance_mask]
-            _cur_masked_theta = torch.cat((self.instances_quats[self.cur_frame], self.smpl_qauts[self.cur_frame]), dim=1)[instance_mask]
-            interpolated_theta = interpolate_quats(_prev_masked_theta, _next_masked_theta)
-            
-            inter_valid_mask = self.instances_fv[self.cur_frame - 1, instance_mask] & self.instances_fv[self.cur_frame + 1, instance_mask]
-            masked_theta = torch.where(
-                inter_valid_mask[:, None, None], interpolated_theta, _cur_masked_theta
-            )
-        else:
-            theta = torch.cat(
-                (self.instances_quats[self.cur_frame], self.smpl_qauts[self.cur_frame]), dim=1
-            )
-            masked_theta = theta[instance_mask]
-        masked_theta = self.quat_act(masked_theta)
+        instance_mask = self._get_current_instance_mask()
+        theta = self._get_current_theta()
+        masked_theta = self.quat_act(theta[instance_mask])
         W, A = self.template(
             masked_theta = masked_theta, 
             instances_mask = instance_mask,
@@ -324,20 +293,7 @@ class SMPLNodes(RigidNodes):
         means_container.index_add_(0, instance_mask.nonzero().squeeze(), deformed_means)
         means_container = means_container.reshape(-1, 3)
 
-        if self.in_test_set and (
-            self.cur_frame - 1 > 0 and self.cur_frame + 1 < self.num_frames
-        ):
-            _prev_ins_trans = self.instances_trans[self.cur_frame - 1]
-            _next_ins_trans = self.instances_trans[self.cur_frame + 1]
-            _cur_ins_trans = self.instances_trans[self.cur_frame]
-            interpolated_trans = (_prev_ins_trans + _next_ins_trans) * 0.5
-            
-            inter_valid_mask = self.instances_fv[self.cur_frame - 1] & self.instances_fv[self.cur_frame + 1]
-            trans_cur_frame = torch.where(
-                inter_valid_mask[:, None], interpolated_trans, _cur_ins_trans
-            )
-        else:
-            trans_cur_frame = self.instances_trans[self.cur_frame] # (num_instances, 3)
+        trans_cur_frame = self._get_current_instance_trans()
         trans_per_pts = trans_cur_frame[self.point_ids[..., 0]]
         
         # transform the means to world space
@@ -359,25 +315,9 @@ class SMPLNodes(RigidNodes):
     def transform_means_and_quats_and_normals(self, means: torch.Tensor, quats: torch.Tensor, normals: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         assert means.shape[0] == self.point_ids.shape[0], \
             "its a bug here, we need to pass the mask for points_ids"
-        instance_mask = self.instances_fv[self.cur_frame]
-        if self.in_test_set and (
-            self.cur_frame - 1 > 0 and self.cur_frame + 1 < self.num_frames
-        ):
-            _prev_masked_theta = torch.cat((self.instances_quats[self.cur_frame - 1], self.smpl_qauts[self.cur_frame - 1]), dim=1)[instance_mask]
-            _next_masked_theta = torch.cat((self.instances_quats[self.cur_frame + 1], self.smpl_qauts[self.cur_frame + 1]), dim=1)[instance_mask]
-            _cur_masked_theta = torch.cat((self.instances_quats[self.cur_frame], self.smpl_qauts[self.cur_frame]), dim=1)[instance_mask]
-            interpolated_theta = interpolate_quats(_prev_masked_theta, _next_masked_theta)
-            
-            inter_valid_mask = self.instances_fv[self.cur_frame - 1, instance_mask] & self.instances_fv[self.cur_frame + 1, instance_mask]
-            masked_theta = torch.where(
-                inter_valid_mask[:, None, None], interpolated_theta, _cur_masked_theta
-            )
-        else:
-            theta = torch.cat(
-                (self.instances_quats[self.cur_frame], self.smpl_qauts[self.cur_frame]), dim=1
-            )
-            masked_theta = theta[instance_mask]
-        masked_theta = self.quat_act(masked_theta)
+        instance_mask = self._get_current_instance_mask()
+        theta = self._get_current_theta()
+        masked_theta = self.quat_act(theta[instance_mask])
         W, A = self.template(
             masked_theta = masked_theta, 
             instances_mask = instance_mask,
@@ -396,20 +336,7 @@ class SMPLNodes(RigidNodes):
         means_container.index_add_(0, instance_mask.nonzero().squeeze(), deformed_means)
         means_container = means_container.reshape(-1, 3)
 
-        if self.in_test_set and (
-            self.cur_frame - 1 > 0 and self.cur_frame + 1 < self.num_frames
-        ):
-            _prev_ins_trans = self.instances_trans[self.cur_frame - 1]
-            _next_ins_trans = self.instances_trans[self.cur_frame + 1]
-            _cur_ins_trans = self.instances_trans[self.cur_frame]
-            interpolated_trans = (_prev_ins_trans + _next_ins_trans) * 0.5
-            
-            inter_valid_mask = self.instances_fv[self.cur_frame - 1] & self.instances_fv[self.cur_frame + 1]
-            trans_cur_frame = torch.where(
-                inter_valid_mask[:, None], interpolated_trans, _cur_ins_trans
-            )
-        else:
-            trans_cur_frame = self.instances_trans[self.cur_frame] # (num_instances, 3)
+        trans_cur_frame = self._get_current_instance_trans()
         trans_per_pts = trans_cur_frame[self.point_ids[..., 0]]
         
         # transform the means to world space
@@ -442,7 +369,7 @@ class SMPLNodes(RigidNodes):
         self.filter_mask = filter_mask
         # NOTE: hack here, need to consider a gaussian filter for efficient rendering
         
-        instance_mask = self.instances_fv[self.cur_frame]
+        instance_mask = self._get_current_instance_mask()
         if instance_mask.sum() == 0:
             return None
                 
@@ -526,7 +453,7 @@ class SMPLNodes(RigidNodes):
         self.filter_mask = filter_mask
         # NOTE: hack here, need to consider a gaussian filter for efficient rendering
         
-        instance_mask = self.instances_fv[self.cur_frame]
+        instance_mask = self._get_current_instance_mask()
         if instance_mask.sum() == 0:
             return None
                 
@@ -586,7 +513,7 @@ class SMPLNodes(RigidNodes):
     def compute_reg_loss(self):
         loss_dict = super().compute_reg_loss()
 
-        instance_mask = self.instances_fv[self.cur_frame]
+        instance_mask = self._get_current_instance_mask()
         if instance_mask.sum() == 0:
             return loss_dict
         
