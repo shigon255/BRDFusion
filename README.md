@@ -5,9 +5,10 @@
     <a href="https://shigon255.github.io/"><strong>Yi-Ruei Liu</strong></a> ·
     <a href="https://jayinnn.dev/"><strong>Jie-Ying Lee</strong></a> ·
     <a href="https://brian90709.github.io/"><strong>Zheng-Hui Huang</strong></a> ·
-    <a href="https://yulunalexliu.github.io/"><strong>Yu-Lun Liu</strong></a> ·
-    <a href="https://chih-hao-lin.github.io/"><strong>Chih-Hao Lin</strong></a>
+    <a href="https://yulunalexliu.github.io/"><strong>Yu-Lun Liu</strong></a><sup>†</sup> ·
+    <a href="https://chih-hao-lin.github.io/"><strong>Chih-Hao Lin</strong></a><sup>†</sup>
   </p>
+  <p><sup>†</sup> Equal advising</p>
 
   <h3>
     <a href="https://shigon255.github.io/brdfusion-page/">🌐 Project Page</a> |
