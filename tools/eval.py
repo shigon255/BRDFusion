@@ -229,6 +229,61 @@ def _look_at_c2w(anchor_c2w: torch.Tensor, position: torch.Tensor, target: torch
     return out
 
 
+_CIRCLE_START_SIDES = {
+    "top",
+    "top_right",
+    "right",
+    "bottom_right",
+    "bottom",
+    "bottom_left",
+    "left",
+    "top_left",
+}
+_CIRCLE_CORNER_SKEW = 0.5
+
+
+def _validate_circle_start_side(start_side: str) -> None:
+    if start_side not in _CIRCLE_START_SIDES:
+        valid = ", ".join(sorted(_CIRCLE_START_SIDES))
+        raise ValueError(f"spiral_circle_start_side must be one of [{valid}], got {start_side!r}.")
+
+
+def _signed_sin_extent(value: float, positive_extent: float, negative_extent: float) -> float:
+    return positive_extent * value if value >= 0.0 else negative_extent * value
+
+
+def _circle_relative_right_up(
+    start_side: str,
+    theta: float,
+    right_m: float,
+    left_m: float,
+    up_m: float,
+    down_m: float,
+) -> tuple[float, float]:
+    _validate_circle_start_side(start_side)
+    f = 0.5 * (1.0 - np.cos(theta))
+    sin_t = np.sin(theta)
+
+    if start_side == "top":
+        return _signed_sin_extent(sin_t, right_m, left_m), -down_m * f
+    if start_side == "bottom":
+        return _signed_sin_extent(sin_t, right_m, left_m), up_m * f
+    if start_side == "left":
+        return right_m * f, _signed_sin_extent(sin_t, up_m, down_m)
+    if start_side == "right":
+        return -left_m * f, _signed_sin_extent(sin_t, up_m, down_m)
+
+    corner_specs = {
+        "top_left": (1.0, right_m, -1.0, down_m),
+        "top_right": (-1.0, left_m, -1.0, down_m),
+        "bottom_right": (-1.0, left_m, 1.0, up_m),
+        "bottom_left": (1.0, right_m, 1.0, up_m),
+    }
+    sign_x, extent_x, sign_y, extent_y = corner_specs[start_side]
+    curved_f = f + _CIRCLE_CORNER_SKEW * sin_t * f * (1.0 - f)
+    return sign_x * extent_x * f, sign_y * extent_y * curved_f
+
+
 class _InterpolatedCameraRenderSet:
     split = "interpolated"
 
@@ -330,16 +385,49 @@ class _SpiralCameraRenderSet:
         loops: float,
         radius_m: float,
         vertical_amplitude_m: float,
+        down_bias_m: float,
+        pitch_mode: str,
+        trajectory_mode: str,
+        circle_start_side: str,
+        circle_radius_right_m: Optional[float],
+        circle_radius_left_m: Optional[float],
+        circle_radius_up_m: Optional[float],
+        circle_radius_down_m: Optional[float],
         target_distance_m: float,
     ):
         if datasource.num_cams != 1:
             raise ValueError("Spiral view rendering currently supports only 1-camera checkpoints.")
         if frames < 2:
             raise ValueError("spiral_frames must be >= 2.")
-        if loops <= 0:
+        loops_f = float(loops)
+        if loops_f <= 0:
             raise ValueError("spiral_loops must be > 0.")
         if target_distance_m <= 0:
             raise ValueError("spiral_target_distance_m must be > 0.")
+        if down_bias_m < 0:
+            raise ValueError("spiral_down_bias_m must be >= 0.")
+        if pitch_mode not in {"look_at", "no_up"}:
+            raise ValueError(f"spiral_pitch_mode must be one of ['look_at', 'no_up'], got {pitch_mode!r}.")
+        trajectory_aliases = {"top_circle": "circle", "legacy_oval": "spiral"}
+        trajectory_mode = trajectory_aliases.get(str(trajectory_mode), str(trajectory_mode))
+        if trajectory_mode not in {"circle", "spiral"}:
+            raise ValueError(f"spiral_trajectory_mode must be one of ['circle', 'spiral'], got {trajectory_mode!r}.")
+        if trajectory_mode == "circle" and abs(loops_f - round(loops_f)) > 1e-6:
+            raise ValueError("spiral_loops must be an integer when spiral_trajectory_mode=circle.")
+        circle_start_side = str(circle_start_side)
+        _validate_circle_start_side(circle_start_side)
+        circle_radius_right_m = float(radius_m if circle_radius_right_m is None else circle_radius_right_m)
+        circle_radius_left_m = float(radius_m if circle_radius_left_m is None else circle_radius_left_m)
+        circle_radius_up_m = float(radius_m if circle_radius_up_m is None else circle_radius_up_m)
+        circle_radius_down_m = float(radius_m if circle_radius_down_m is None else circle_radius_down_m)
+        for name, value in (
+            ("spiral_circle_radius_right_m", circle_radius_right_m),
+            ("spiral_circle_radius_left_m", circle_radius_left_m),
+            ("spiral_circle_radius_up_m", circle_radius_up_m),
+            ("spiral_circle_radius_down_m", circle_radius_down_m),
+        ):
+            if value <= 0:
+                raise ValueError(f"{name} must be > 0.")
         if cam_id < 0 or cam_id >= datasource.num_cams:
             raise ValueError(f"spiral_cam_id={cam_id} is out of range [0, {datasource.num_cams - 1}].")
         if timestep < 0 or timestep >= datasource.num_frames:
@@ -352,9 +440,17 @@ class _SpiralCameraRenderSet:
         self.cam_id = int(cam_id)
         self.frames = int(frames)
         self.num_timestamps = self.frames
-        self.loops = float(loops)
+        self.loops = loops_f
         self.radius_m = float(radius_m)
         self.vertical_amplitude_m = float(vertical_amplitude_m)
+        self.down_bias_m = float(down_bias_m)
+        self.pitch_mode = str(pitch_mode)
+        self.trajectory_mode = str(trajectory_mode)
+        self.circle_start_side = circle_start_side
+        self.circle_radius_right_m = circle_radius_right_m
+        self.circle_radius_left_m = circle_radius_left_m
+        self.circle_radius_up_m = circle_radius_up_m
+        self.circle_radius_down_m = circle_radius_down_m
         self.target_distance_m = float(target_distance_m)
 
     def __len__(self) -> int:
@@ -374,12 +470,33 @@ class _SpiralCameraRenderSet:
         up = anchor_c2w[:3, 1]
         forward = anchor_c2w[:3, 2]
         position = anchor_c2w[:3, 3]
+        if self.trajectory_mode == "circle":
+            right_offset, up_offset = _circle_relative_right_up(
+                self.circle_start_side,
+                theta,
+                self.circle_radius_right_m,
+                self.circle_radius_left_m,
+                self.circle_radius_up_m,
+                self.circle_radius_down_m,
+            )
+            camera_offset = right_offset * right - up_offset * up
+            vertical_offset = -up_offset * up
+            camera_pos = position + camera_offset
+            target = position + vertical_offset + self.target_distance_m * forward
+            return _look_at_c2w(anchor_c2w, camera_pos, target)
+
         offset = envelope * (
             self.radius_m * np.cos(theta) * right
             + self.vertical_amplitude_m * np.sin(theta) * up
         )
-        target = position + self.target_distance_m * forward
-        return _look_at_c2w(anchor_c2w, position + offset, target)
+        down_bias = self.down_bias_m * envelope * up
+        camera_pos = position + offset + down_bias
+        target = position + self.target_distance_m * forward + down_bias
+        if self.pitch_mode == "no_up":
+            human_up = -up
+            height_delta = torch.dot(target - camera_pos, human_up)
+            target = target - torch.clamp(height_delta, min=0.0) * human_up
+        return _look_at_c2w(anchor_c2w, camera_pos, target)
 
     def get_image(self, idx: int, camera_downscale: float):
         downscale_factor = 1 / camera_downscale * self.datasource.downscale_factor
@@ -1268,6 +1385,14 @@ def do_evaluation(
                 loops=float(args.spiral_loops),
                 radius_m=float(args.spiral_radius_m),
                 vertical_amplitude_m=float(args.spiral_vertical_amplitude_m),
+                down_bias_m=float(args.spiral_down_bias_m),
+                pitch_mode=str(args.spiral_pitch_mode),
+                trajectory_mode=str(args.spiral_trajectory_mode),
+                circle_start_side=str(args.spiral_circle_start_side),
+                circle_radius_right_m=args.spiral_circle_radius_right_m,
+                circle_radius_left_m=args.spiral_circle_radius_left_m,
+                circle_radius_up_m=args.spiral_circle_radius_up_m,
+                circle_radius_down_m=args.spiral_circle_radius_down_m,
                 target_distance_m=float(args.spiral_target_distance_m),
             )
             vis_indices = None
@@ -1277,8 +1402,13 @@ def do_evaluation(
             print(
                 f"Rendering spiral view at timestep {spiral_timestep}, compact camera "
                 f"{args.spiral_cam_id}, {render_num_timestamps} frames, {args.spiral_loops} "
-                f"loops, radius {args.spiral_radius_m}m, vertical amplitude "
-                f"{args.spiral_vertical_amplitude_m}m, target distance "
+                f"loops, trajectory {args.spiral_trajectory_mode}, radius {args.spiral_radius_m}m, "
+                f"circle start side {args.spiral_circle_start_side}, circle radii "
+                f"right={args.spiral_circle_radius_right_m}, left={args.spiral_circle_radius_left_m}, "
+                f"up={args.spiral_circle_radius_up_m}, down={args.spiral_circle_radius_down_m}, "
+                f"vertical amplitude {args.spiral_vertical_amplitude_m}m, down bias "
+                f"{args.spiral_down_bias_m}m, pitch mode "
+                f"{args.spiral_pitch_mode}, target distance "
                 f"{args.spiral_target_distance_m}m. Saving at {render_fps} FPS."
             )
         elif camera_interp_steps > 0:
@@ -1903,6 +2033,14 @@ if __name__ == "__main__":
     parser.add_argument("--spiral_loops", type=float, default=1.0, help="number of loops in spiral render mode")
     parser.add_argument("--spiral_radius_m", type=float, default=1.0, help="horizontal spiral radius in meters")
     parser.add_argument("--spiral_vertical_amplitude_m", type=float, default=0.3, help="vertical spiral amplitude in meters")
+    parser.add_argument("--spiral_down_bias_m", type=float, default=0.0, help="downward center bias in meters for spiral mode; preserves start/end anchor pose")
+    parser.add_argument("--spiral_pitch_mode", type=str, default="look_at", choices=["look_at", "no_up"], help="spiral look-at pitch behavior; no_up prevents upward-looking spiral views")
+    parser.add_argument("--spiral_trajectory_mode", type=str, default="circle", help="camera trajectory mode: circle or spiral")
+    parser.add_argument("--spiral_circle_start_side", type=str, default="top", help="circle mode original camera position on the trajectory bounds")
+    parser.add_argument("--spiral_circle_radius_right_m", type=float, default=None, help="circle mode movement extent toward camera-right; defaults to --spiral_radius_m")
+    parser.add_argument("--spiral_circle_radius_left_m", type=float, default=None, help="circle mode movement extent toward camera-left; defaults to --spiral_radius_m")
+    parser.add_argument("--spiral_circle_radius_up_m", type=float, default=None, help="circle mode movement extent toward camera-up; defaults to --spiral_radius_m")
+    parser.add_argument("--spiral_circle_radius_down_m", type=float, default=None, help="circle mode movement extent toward camera-down; defaults to --spiral_radius_m")
     parser.add_argument("--spiral_target_distance_m", type=float, default=10.0, help="look-at target distance in front of the anchor camera")
     parser.add_argument("--spiral_fps", type=int, default=None, help="optional FPS override for spiral render mode")
     parser.add_argument("--isosurface_render", action="store_true", help="render using isosurface rendering")

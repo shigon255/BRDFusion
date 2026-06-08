@@ -446,16 +446,30 @@ CAMERA_INTERP_STEPS=2 \
 scripts/applications/render.sh
 ```
 
+Render a circle camera path around one timestep:
+
+```bash
+CKPT=/path/to/checkpoint_final.pth \
+TIMESTEP=20 CAM_ID=0 \
+SPIRAL_TRAJECTORY_MODE=circle \
+SPIRAL_CIRCLE_START_SIDE=bottom_left \
+SPIRAL_CIRCLE_RADIUS_RIGHT_M=0.5 \
+SPIRAL_CIRCLE_RADIUS_UP_M=0.3 \
+SPIRAL_FRAMES=120 \
+SPIRAL_LOOPS=1 \
+scripts/applications/render.sh
+```
+
 Render a spiral camera path around one timestep:
 
 ```bash
 CKPT=/path/to/checkpoint_final.pth \
 TIMESTEP=20 CAM_ID=0 \
+SPIRAL_TRAJECTORY_MODE=spiral \
 SPIRAL_FRAMES=120 \
 SPIRAL_LOOPS=1 \
 SPIRAL_RADIUS_M=1.0 \
 SPIRAL_VERTICAL_AMPLITUDE_M=0.3 \
-SPIRAL_TARGET_DISTANCE_M=10.0 \
 scripts/applications/render.sh
 ```
 
