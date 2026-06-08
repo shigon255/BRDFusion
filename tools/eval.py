@@ -408,8 +408,7 @@ class _SpiralCameraRenderSet:
             raise ValueError("spiral_down_bias_m must be >= 0.")
         if pitch_mode not in {"look_at", "no_up"}:
             raise ValueError(f"spiral_pitch_mode must be one of ['look_at', 'no_up'], got {pitch_mode!r}.")
-        trajectory_aliases = {"top_circle": "circle", "legacy_oval": "spiral"}
-        trajectory_mode = trajectory_aliases.get(str(trajectory_mode), str(trajectory_mode))
+        trajectory_mode = str(trajectory_mode)
         if trajectory_mode not in {"circle", "spiral"}:
             raise ValueError(f"spiral_trajectory_mode must be one of ['circle', 'spiral'], got {trajectory_mode!r}.")
         if trajectory_mode == "circle" and abs(loops_f - round(loops_f)) > 1e-6:
@@ -1399,16 +1398,24 @@ def do_evaluation(
             render_num_timestamps = render_dataset.num_timestamps
             render_fps = int(args.spiral_fps or cfg.render.fps)
             render_compute_metrics = False
+            if render_dataset.trajectory_mode == "circle":
+                trajectory_details = (
+                    f"circle start side {render_dataset.circle_start_side}, circle radii "
+                    f"right={render_dataset.circle_radius_right_m}m, "
+                    f"left={render_dataset.circle_radius_left_m}m, "
+                    f"up={render_dataset.circle_radius_up_m}m, "
+                    f"down={render_dataset.circle_radius_down_m}m"
+                )
+            else:
+                trajectory_details = (
+                    f"vertical amplitude {render_dataset.vertical_amplitude_m}m, "
+                    f"down bias {render_dataset.down_bias_m}m, "
+                    f"pitch mode {render_dataset.pitch_mode}"
+                )
             print(
-                f"Rendering spiral view at timestep {spiral_timestep}, compact camera "
+                f"Rendering {render_dataset.trajectory_mode} view at timestep {spiral_timestep}, compact camera "
                 f"{args.spiral_cam_id}, {render_num_timestamps} frames, {args.spiral_loops} "
-                f"loops, trajectory {args.spiral_trajectory_mode}, radius {args.spiral_radius_m}m, "
-                f"circle start side {args.spiral_circle_start_side}, circle radii "
-                f"right={args.spiral_circle_radius_right_m}, left={args.spiral_circle_radius_left_m}, "
-                f"up={args.spiral_circle_radius_up_m}, down={args.spiral_circle_radius_down_m}, "
-                f"vertical amplitude {args.spiral_vertical_amplitude_m}m, down bias "
-                f"{args.spiral_down_bias_m}m, pitch mode "
-                f"{args.spiral_pitch_mode}, target distance "
+                f"loops, {trajectory_details}, target distance "
                 f"{args.spiral_target_distance_m}m. Saving at {render_fps} FPS."
             )
         elif camera_interp_steps > 0:
@@ -2035,7 +2042,7 @@ if __name__ == "__main__":
     parser.add_argument("--spiral_vertical_amplitude_m", type=float, default=0.3, help="vertical spiral amplitude in meters")
     parser.add_argument("--spiral_down_bias_m", type=float, default=0.0, help="downward center bias in meters for spiral mode; preserves start/end anchor pose")
     parser.add_argument("--spiral_pitch_mode", type=str, default="look_at", choices=["look_at", "no_up"], help="spiral look-at pitch behavior; no_up prevents upward-looking spiral views")
-    parser.add_argument("--spiral_trajectory_mode", type=str, default="circle", help="camera trajectory mode: circle or spiral")
+    parser.add_argument("--spiral_trajectory_mode", type=str, default="circle", choices=["circle", "spiral"], help="camera trajectory mode")
     parser.add_argument("--spiral_circle_start_side", type=str, default="top", help="circle mode original camera position on the trajectory bounds")
     parser.add_argument("--spiral_circle_radius_right_m", type=float, default=None, help="circle mode movement extent toward camera-right; defaults to --spiral_radius_m")
     parser.add_argument("--spiral_circle_radius_left_m", type=float, default=None, help="circle mode movement extent toward camera-left; defaults to --spiral_radius_m")

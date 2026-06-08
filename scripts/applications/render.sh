@@ -155,17 +155,9 @@ if [[ -n "${TIMESTEP}" ]]; then
   fi
   loops_tag="$(sanitize_component "${SPIRAL_LOOPS}")"
   radius_tag="$(sanitize_component "${SPIRAL_RADIUS_M}")"
-  vertical_tag="$(sanitize_component "${SPIRAL_VERTICAL_AMPLITUDE_M}")"
   target_tag="$(sanitize_component "${SPIRAL_TARGET_DISTANCE_M}")"
-  down_bias_tag="$(sanitize_component "${SPIRAL_DOWN_BIAS_M}")"
-  pitch_tag="$(safe_tag "${SPIRAL_PITCH_MODE}")"
   trajectory_tag="$(safe_tag "${SPIRAL_TRAJECTORY_MODE}")"
-  circle_side_tag="$(safe_tag "${SPIRAL_CIRCLE_START_SIDE}")"
-  circle_right_tag="$(sanitize_component "${SPIRAL_CIRCLE_RADIUS_RIGHT_M}")"
-  circle_left_tag="$(sanitize_component "${SPIRAL_CIRCLE_RADIUS_LEFT_M}")"
-  circle_up_tag="$(sanitize_component "${SPIRAL_CIRCLE_RADIUS_UP_M}")"
-  circle_down_tag="$(sanitize_component "${SPIRAL_CIRCLE_RADIUS_DOWN_M}")"
-  append_tag "spiral_timestep${TIMESTEP}_cam${CAM_ID}_frames${SPIRAL_FRAMES}_loops${loops_tag}_mode${trajectory_tag}_side${circle_side_tag}_rr${circle_right_tag}_rl${circle_left_tag}_ru${circle_up_tag}_rd${circle_down_tag}_r${radius_tag}_z${vertical_tag}_down${down_bias_tag}_pitch${pitch_tag}_target${target_tag}"
+  base_spiral_tag="spiral_timestep${TIMESTEP}_cam${CAM_ID}_frames${SPIRAL_FRAMES}_loops${loops_tag}_mode${trajectory_tag}_r${radius_tag}_target${target_tag}"
   EXTRA_EVAL_ARGS+=(
     --spiral_timestep "${TIMESTEP}"
     --spiral_cam_id "${CAM_ID}"
@@ -173,16 +165,40 @@ if [[ -n "${TIMESTEP}" ]]; then
     --spiral_loops "${SPIRAL_LOOPS}"
     --spiral_radius_m "${SPIRAL_RADIUS_M}"
     --spiral_trajectory_mode "${SPIRAL_TRAJECTORY_MODE}"
-    --spiral_circle_start_side "${SPIRAL_CIRCLE_START_SIDE}"
-    --spiral_circle_radius_right_m "${SPIRAL_CIRCLE_RADIUS_RIGHT_M}"
-    --spiral_circle_radius_left_m "${SPIRAL_CIRCLE_RADIUS_LEFT_M}"
-    --spiral_circle_radius_up_m "${SPIRAL_CIRCLE_RADIUS_UP_M}"
-    --spiral_circle_radius_down_m "${SPIRAL_CIRCLE_RADIUS_DOWN_M}"
-    --spiral_vertical_amplitude_m "${SPIRAL_VERTICAL_AMPLITUDE_M}"
-    --spiral_down_bias_m "${SPIRAL_DOWN_BIAS_M}"
-    --spiral_pitch_mode "${SPIRAL_PITCH_MODE}"
     --spiral_target_distance_m "${SPIRAL_TARGET_DISTANCE_M}"
   )
+  case "${SPIRAL_TRAJECTORY_MODE}" in
+    circle)
+      circle_side_tag="$(safe_tag "${SPIRAL_CIRCLE_START_SIDE}")"
+      circle_right_tag="$(sanitize_component "${SPIRAL_CIRCLE_RADIUS_RIGHT_M}")"
+      circle_left_tag="$(sanitize_component "${SPIRAL_CIRCLE_RADIUS_LEFT_M}")"
+      circle_up_tag="$(sanitize_component "${SPIRAL_CIRCLE_RADIUS_UP_M}")"
+      circle_down_tag="$(sanitize_component "${SPIRAL_CIRCLE_RADIUS_DOWN_M}")"
+      append_tag "${base_spiral_tag}_side${circle_side_tag}_rr${circle_right_tag}_rl${circle_left_tag}_ru${circle_up_tag}_rd${circle_down_tag}"
+      EXTRA_EVAL_ARGS+=(
+        --spiral_circle_start_side "${SPIRAL_CIRCLE_START_SIDE}"
+        --spiral_circle_radius_right_m "${SPIRAL_CIRCLE_RADIUS_RIGHT_M}"
+        --spiral_circle_radius_left_m "${SPIRAL_CIRCLE_RADIUS_LEFT_M}"
+        --spiral_circle_radius_up_m "${SPIRAL_CIRCLE_RADIUS_UP_M}"
+        --spiral_circle_radius_down_m "${SPIRAL_CIRCLE_RADIUS_DOWN_M}"
+      )
+      ;;
+    spiral)
+      vertical_tag="$(sanitize_component "${SPIRAL_VERTICAL_AMPLITUDE_M}")"
+      down_bias_tag="$(sanitize_component "${SPIRAL_DOWN_BIAS_M}")"
+      pitch_tag="$(safe_tag "${SPIRAL_PITCH_MODE}")"
+      append_tag "${base_spiral_tag}_z${vertical_tag}_down${down_bias_tag}_pitch${pitch_tag}"
+      EXTRA_EVAL_ARGS+=(
+        --spiral_vertical_amplitude_m "${SPIRAL_VERTICAL_AMPLITUDE_M}"
+        --spiral_down_bias_m "${SPIRAL_DOWN_BIAS_M}"
+        --spiral_pitch_mode "${SPIRAL_PITCH_MODE}"
+      )
+      ;;
+    *)
+      echo "[ERR] SPIRAL_TRAJECTORY_MODE must be circle or spiral." >&2
+      exit 1
+      ;;
+  esac
   if [[ -n "${SPIRAL_FPS:-}" ]]; then
     EXTRA_EVAL_ARGS+=(--spiral_fps "${SPIRAL_FPS}")
   fi
