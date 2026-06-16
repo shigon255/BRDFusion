@@ -757,10 +757,14 @@ This research was funded by the National Science and Technology Council, Taiwan,
 If you find BRDFusion useful for your research, please consider citing:
 
 ```bibtex
-@misc{liu2026brdfusion,
-  title={BRDFusion: Physics Meets Generation for Urban Scene Inverse Rendering},
-  author={Liu, Yi-Ruei and Lee, Jie-Ying and Huang, Zheng-Hui and Liu, Yu-Lun and Lin, Chih-Hao},
-  year={2026}
+@misc{liu2026brdfusionphysicsmeetsgeneration,
+      title={BRDFusion: Physics Meets Generation for Urban Scene Inverse Rendering}, 
+      author={Yi-Ruei Liu and Jie-Ying Lee and Zheng-Hui Huang and Yu-Lun Liu and Chih-Hao Lin},
+      year={2026},
+      eprint={2606.17049},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2606.17049}, 
 }
 ```
 
