@@ -12,7 +12,7 @@
 
   <h3>
     <a href="https://shigon255.github.io/brdfusion-page/">🌐 Project Page</a> |
-    <a href="#">📄 arXiv</a> |
+    <a href="https://arxiv.org/abs/2606.17049">📄 arXiv</a> |
     <a href="https://huggingface.co/datasets/Shigon/BRDFusion_data">🤗 Dataset</a> |
     <a href="https://huggingface.co/Shigon/BRDFusion_checkpoints">🤗 Pretrained Checkpoints</a> |
     <a href="https://huggingface.co/datasets/Shigon/BRDFusion_videos">🤗 Eval Results</a>
